@@ -5,7 +5,7 @@ import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import type { ScheduleSlot, Week } from "@/types";
 import { SUBJECT_COLORS } from "@/types";
-import { DAYS } from "@/utils/date";
+import { DAYS, timeToMinutes, minutesToTime } from "@/utils/date";
 
 interface SlotModalProps {
   open: boolean;
@@ -13,9 +13,10 @@ interface SlotModalProps {
   slot?: ScheduleSlot | null;
   defaultDay?: number;
   defaultWeek?: Week;
+  defaultStart?: string;
 }
 
-export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "BOTH" }: SlotModalProps) {
+export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "BOTH", defaultStart }: SlotModalProps) {
   const { data, addSlot, updateSlot, deleteSlot } = useData();
   const { notify, confirm } = useUI();
 
@@ -33,15 +34,21 @@ export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "
     if (open) {
       setWeek(slot?.week || defaultWeek);
       setDay(slot?.day ?? defaultDay);
-      setStart(slot?.start || "08:00");
-      setEnd(slot?.end || "09:00");
+      const initialStart = slot?.start || defaultStart || "08:00";
+      setStart(initialStart);
+      if (slot?.end) {
+        setEnd(slot.end);
+      } else {
+        const startMin = timeToMinutes(initialStart);
+        setEnd(minutesToTime(Math.min(1040, startMin + 60))); // +1h ou plafonné à 17:20 (1040 min)
+      }
       setSubjectId(slot?.subjectId || "");
       setLabel(slot?.label || "");
       setRoom(slot?.room || "");
       setTeacher(slot?.teacher || "");
       setColor(slot?.color || SUBJECT_COLORS[0]);
     }
-  }, [open, slot, defaultDay, defaultWeek]);
+  }, [open, slot, defaultDay, defaultWeek, defaultStart]);
 
   const handleSubmit = () => {
     if (!subjectId && !label.trim()) return notify("Choisissez une matière ou saisissez un libellé", "error");
@@ -96,7 +103,7 @@ export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "
         <div className="grid grid-cols-2 gap-4">
           <Field label="Jour">
             <select className={inputClass} value={day} onChange={(e) => setDay(Number(e.target.value))}>
-              {DAYS.map((d, i) => (
+              {DAYS.slice(0, 5).map((d, i) => (
                 <option key={d} value={i}>{d}</option>
               ))}
             </select>
@@ -104,8 +111,8 @@ export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "
           <Field label="Semaine">
             <select className={inputClass} value={week} onChange={(e) => setWeek(e.target.value as Week)}>
               <option value="BOTH">Toutes les semaines</option>
-              <option value="A">Semaine A</option>
-              <option value="B">Semaine B</option>
+              <option value="A">Semaine Pair</option>
+              <option value="B">Semaine Impair</option>
             </select>
           </Field>
         </div>
