@@ -7,8 +7,8 @@ import { SlotModal } from "./SlotModal";
 import { EmptyState } from "@/components/common/EmptyState";
 import { btnPrimary, btnSecondary } from "@/components/common/FormField";
 
-const DAY_START = 7 * 60; // 07:00
-const DAY_END = 19 * 60; // 19:00
+const DAY_START = 8 * 60; // 08:00
+const DAY_END = 17 * 60 + 20; // 17:20 (1040 min)
 const PX_PER_MIN = 1.2;
 const WORKWEEK_DAYS = DAYS.slice(0, 5); // Lundi -> Vendredi
 
@@ -16,10 +16,9 @@ export function SchedulePage() {
   const { data, updateSlot, updateSettings, copyWeekSchedule } = useData();
   const [weekView, setWeekView] = useState<Week>(data.settings.currentWeek);
   const [mobileDay, setMobileDay] = useState(() => Math.min(currentDayIndex(), 4));
-  const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number }>({ open: false });
+  const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number; defaultStart?: string }>({ open: false });
   const [dragId, setDragId] = useState<string | null>(null);
   
-  // Heure actuelle en minutes depuis minuit (ex: 10h30 = 10*60 + 30 = 630)
   const [nowMinutes, setNowMinutes] = useState(() => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
@@ -29,7 +28,7 @@ export function SchedulePage() {
     const timer = setInterval(() => {
       const now = new Date();
       setNowMinutes(now.getHours() * 60 + now.getMinutes());
-    }, 60000); // Mise à jour chaque minute
+    }, 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -57,10 +56,23 @@ export function SchedulePage() {
     setDragId(null);
   };
 
+  const handleDoubleClickGrid = (dayIdx: number, clientY: number, containerTop: number) => {
+    const offsetMin = (clientY - containerTop) / PX_PER_MIN;
+    const clickedMin = Math.round((DAY_START + offsetMin) / 5) * 5;
+    const clampedMin = Math.max(DAY_START, Math.min(clickedMin, DAY_END - 60));
+    setModal({
+      open: true,
+      day: dayIdx,
+      defaultStart: minutesToTime(clampedMin),
+    });
+  };
+
   const handleCopyWeek = () => {
     if (weekView === "BOTH") return;
     const targetWeek: "A" | "B" = weekView === "A" ? "B" : "A";
-    if (window.confirm(`Copier la Semaine ${weekView} vers la Semaine ${targetWeek} ? Cela écrasera les créneaux spécifiques de la semaine ${targetWeek}.`)) {
+    const labelTarget = targetWeek === "A" ? "Pair" : "Impair";
+    const labelSource = weekView === "A" ? "Pair" : "Impair";
+    if (window.confirm(`Copier la Semaine ${labelSource} vers la Semaine ${labelTarget} ? Cela écrasera les créneaux spécifiques de la semaine ${labelTarget}.`)) {
       copyWeekSchedule?.(weekView, targetWeek);
     }
   };
@@ -84,34 +96,40 @@ export function SchedulePage() {
     );
   };
 
-  // Calcul de la position de la barre actuelle si elle est dans la plage visible (07:00 - 19:00)
   const isTimeVisible = nowMinutes >= DAY_START && nowMinutes <= DAY_END;
   const nowTop = (nowMinutes - DAY_START) * PX_PER_MIN;
+
+  const currentWeekLabel = weekView === "A" ? "Pair" : weekView === "B" ? "Impair" : "Les deux";
 
   return (
     <div className="space-y-5 pb-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Emploi du temps</h1>
-          <p className="mt-1 text-sm text-slate-400">Glissez-déposez vos créneaux pour les réorganiser (bureau).</p>
+          <p className="mt-1 text-sm text-slate-400">8:00 – 17:20 · Double-cliquez sur une case pour ajouter un cours.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {weekView !== "BOTH" && copyWeekSchedule && (
             <button className={btnSecondary} onClick={handleCopyWeek}>
-              <Copy className="h-3.5 w-3.5" /> Copier vers sem. {weekView === "A" ? "B" : "A"}
+              <Copy className="h-3.5 w-3.5" /> Copier vers sem. {weekView === "A" ? "Impair" : "Pair"}
             </button>
           )}
           <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium dark:bg-slate-800">
-            {(["A", "B"] as const).map((w) => (
+            {(
+              [
+                { key: "A" as const, label: "Pair" },
+                { key: "B" as const, label: "Impair" },
+              ] as const
+            ).map((w) => (
               <button
-                key={w}
+                key={w.key}
                 onClick={() => {
-                  setWeekView(w);
-                  updateSettings({ currentWeek: w });
+                  setWeekView(w.key);
+                  updateSettings({ currentWeek: w.key });
                 }}
-                className={`rounded-md px-3 py-1.5 transition ${weekView === w ? "bg-white shadow-sm dark:bg-slate-700" : "text-slate-500"}`}
+                className={`rounded-md px-3 py-1.5 transition ${weekView === w.key ? "bg-white shadow-sm dark:bg-slate-700" : "text-slate-500"}`}
               >
-                Semaine {w}
+                Semaine {w.label}
               </button>
             ))}
           </div>
@@ -156,12 +174,15 @@ export function SchedulePage() {
                     const rect = e.currentTarget.getBoundingClientRect();
                     handleDrop(dayIdx, e.clientY, rect.top);
                   }}
+                  onDoubleClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    handleDoubleClickGrid(dayIdx, e.clientY, rect.top);
+                  }}
                 >
                   {hourMarks.map((m) => (
                     <div key={m} className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-700/50" style={{ top: (m - DAY_START) * PX_PER_MIN }} />
                   ))}
                   
-                  {/* Ligne indicateur du moment présent si c'est aujourd'hui (lundi-vendredi) */}
                   {currentDayIndex() === dayIdx && isTimeVisible && (
                     <div
                       className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
