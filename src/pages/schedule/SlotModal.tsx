@@ -14,6 +14,7 @@ interface SlotModalProps {
   defaultDay?: number;
   defaultWeek?: Week;
   defaultStart?: string;
+  defaultEnd?: string; // <-- Ajout ici
 }
 
 export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "BOTH", defaultStart }: SlotModalProps) {
