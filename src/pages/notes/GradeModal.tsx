@@ -51,7 +51,7 @@ export function GradeModal({ open, onClose, subjectId, grade }: GradeModalProps)
     onClose();
   };
 
-  const normalized = round(normalizeGrade(value, maxValue), 2);
+  const normalized = round(normalizeGrade(value, maxValue), 1);
 
   return (
     <Modal
