@@ -65,6 +65,10 @@ export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCrea
       notify("Veuillez choisir une matière", "error");
       return;
     }
+    if (kind === "fiche" && !pendingFile) {
+      notify("L'ajout d'un fichier est obligatoire pour une fiche de révision", "error");
+      return;
+    }
 
     let fileId: string | undefined;
     if (pendingFile) {
@@ -137,7 +141,10 @@ export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCrea
           <textarea className={inputClass} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
 
-        <Field label="Importer un fichier (optionnel)" hint="Formats acceptés : PDF, DOCX, images, TXT. Vous pourrez éditer le contenu directement après création.">
+        <Field
+          label={kind === "fiche" ? "Importer un fichier (obligatoire)" : "Importer un fichier (optionnel)"}
+          hint={kind === "fiche" ? "PDF, DOCX, images, TXT requis." : "Formats acceptés : PDF, DOCX, images, TXT. Vous pourrez éditer le contenu directement après création."}
+        >
           {!pendingFile ? (
             <FileDrop onFile={setPendingFile} hint="PDF, DOCX, JPG, PNG, TXT" />
           ) : (
