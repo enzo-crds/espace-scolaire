@@ -13,9 +13,9 @@ interface DocumentsPageProps {
   kind: DocKind;
 }
 
-const LABELS: Record<DocKind, { title: string; singular: string; empty: string }> = {
-  course: { title: "Cours", singular: "cours", empty: "Aucun cours pour le moment." },
-  fiche: { title: "Fiches de révision", singular: "fiche", empty: "Aucune fiche de révision pour le moment." },
+const LABELS: Record<DocKind, { title: string; singular: string; empty: string; newBtn: string }> = {
+  course: { title: "Cours", singular: "cours", empty: "Aucun cours pour le moment.", newBtn: "Nouveau cours" },
+  fiche: { title: "Fiches de révision", singular: "fiche", empty: "Aucune fiche de révision pour le moment.", newBtn: "Nouvelle fiche" },
 };
 
 export function DocumentsPage({ kind }: DocumentsPageProps) {
@@ -102,7 +102,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
                 setNewDocOpen(true);
               }}
             >
-              <Plus className="h-4 w-4" /> Nouveau {label.singular}
+              <Plus className="h-4 w-4" /> {label.newBtn}
             </button>
           </div>
         </div>
@@ -177,7 +177,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
           </div>
         </div>
         <button className={btnPrimary} onClick={() => setNewDocOpen(true)}>
-          <Plus className="h-4 w-4" /> Nouveau {label.singular}
+          <Plus className="h-4 w-4" /> {label.newBtn}
         </button>
       </div>
 
@@ -198,7 +198,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
           description={`Créez votre premier(ère) ${label.singular} pour cette matière.`}
           action={
             <button className={btnPrimary} onClick={() => setNewDocOpen(true)}>
-              <Plus className="h-4 w-4" /> Nouveau {label.singular}
+              <Plus className="h-4 w-4" /> {label.newBtn}
             </button>
           }
         />
