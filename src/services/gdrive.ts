@@ -1,16 +1,15 @@
 import type { AppData } from "@/types";
 
 const CLIENT_ID = "647963986605-944tkn3ej3sru62pkf2lr6lmbuslq242.apps.googleusercontent.com";
-// On passe à drive.file pour voir/gérer le fichier dans le Drive normal
-const SCOPES = "https://www.googleapis.com/auth/drive.file";
+const SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile";
 const FILENAME = "espace-scolaire-sync.json";
 
 let tokenClient: any = null;
-let accessToken: string | null = localStorage.getItem("gdrive_token");
+let accessToken: string | null = typeof window !== "undefined" ? localStorage.getItem("gdrive_token") : null;
 
-export function initGoogleIdentity(onTokenReceived: (token: string) => void) {
+export function initGoogleIdentity(onTokenReceived?: (token: string) => void) {
   if (typeof window === "undefined" || !(window as any).google) return;
-  
+
   tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
@@ -18,7 +17,7 @@ export function initGoogleIdentity(onTokenReceived: (token: string) => void) {
       if (resp.access_token) {
         accessToken = resp.access_token;
         localStorage.setItem("gdrive_token", accessToken!);
-        onTokenReceived(accessToken!);
+        if (onTokenReceived) onTokenReceived(accessToken!);
       }
     },
   });
@@ -28,8 +27,8 @@ export function promptGoogleLogin() {
   if (tokenClient) {
     tokenClient.requestAccessToken({ prompt: "consent" });
   } else if (typeof window !== "undefined" && (window as any).google) {
-    initGoogleIdentity(() => {});
-    tokenClient?.requestAccessToken({ prompt: "consent" });
+    initGoogleIdentity();
+    setTimeout(() => tokenClient?.requestAccessToken({ prompt: "consent" }), 100);
   }
 }
 
@@ -42,13 +41,29 @@ export function isGoogleConnected(): boolean {
   return !!accessToken;
 }
 
-// Recherche le fichier dans le Drive normal (spaces=drive)
+function getValidToken(): string | null {
+  if (accessToken) return accessToken;
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("gdrive_token");
+    if (stored) {
+      accessToken = stored;
+      return stored;
+    }
+  }
+  return null;
+}
+
+// Recherche le fichier dans Google Drive
 async function findSyncFileId(token: string): Promise<string | null> {
   try {
     const query = encodeURIComponent(`name = '${FILENAME}' and trashed = false`);
     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&spaces=drive`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (res.status === 401) {
+      logoutGoogle(); // Token expiré
+      return null;
+    }
     if (!res.ok) return null;
     const data = await res.json();
     return data.files?.[0]?.id || null;
@@ -58,23 +73,23 @@ async function findSyncFileId(token: string): Promise<string | null> {
 }
 
 export async function uploadToGoogleDrive(data: AppData): Promise<boolean> {
-  if (!accessToken) return false;
+  const token = getValidToken();
+  if (!token) return false;
   try {
-    let fileId = await findSyncFileId(accessToken);
+    const fileId = await findSyncFileId(token);
     const content = JSON.stringify(data, null, 2);
 
     if (fileId) {
       const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: content,
       });
       return res.ok;
     } else {
-      // Création à la racine du Drive normal (sans parents spécifiques)
       const metadata = {
         name: FILENAME,
         mimeType: "application/json",
@@ -85,7 +100,7 @@ export async function uploadToGoogleDrive(data: AppData): Promise<boolean> {
 
       const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
       return res.ok;
@@ -97,13 +112,14 @@ export async function uploadToGoogleDrive(data: AppData): Promise<boolean> {
 }
 
 export async function downloadFromGoogleDrive(): Promise<AppData | null> {
-  if (!accessToken) return null;
+  const token = getValidToken();
+  if (!token) return null;
   try {
-    const fileId = await findSyncFileId(accessToken);
+    const fileId = await findSyncFileId(token);
     if (!fileId) return null;
 
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return null;
     return await res.json();
@@ -114,9 +130,9 @@ export async function downloadFromGoogleDrive(): Promise<AppData | null> {
 }
 
 export async function getGoogleUserFirstName(): Promise<string | null> {
+  const token = getValidToken();
+  if (!token) return null;
   try {
-    const token = gapi?.client?.getToken()?.access_token;
-    if (!token) return null;
     const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -129,21 +145,20 @@ export async function getGoogleUserFirstName(): Promise<string | null> {
 }
 
 export async function uploadFileToDrive(file: File | Blob, name: string): Promise<string | null> {
+  const token = getValidToken();
+  if (!token) return null;
   try {
-    const token = gapi?.client?.getToken()?.access_token;
-    if (!token) return null;
-
     const metadata = {
       name: `espace-scolaire-${name}`,
-      mimeType: file.type || 'application/octet-stream',
+      mimeType: file.type || "application/octet-stream",
     };
 
     const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', file);
+    form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+    form.append("file", file);
 
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST',
+    const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
+      method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: form,
     });
@@ -152,16 +167,15 @@ export async function uploadFileToDrive(file: File | Blob, name: string): Promis
     const data = await res.json();
     return data.id || null;
   } catch (e) {
-    console.error('Erreur upload fichier Drive', e);
+    console.error("Erreur upload fichier Drive", e);
     return null;
   }
 }
 
 export async function downloadFileFromDrive(driveFileId: string): Promise<Blob | null> {
+  const token = getValidToken();
+  if (!token) return null;
   try {
-    const token = gapi?.client?.getToken()?.access_token;
-    if (!token) return null;
-
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -169,20 +183,20 @@ export async function downloadFileFromDrive(driveFileId: string): Promise<Blob |
     if (!res.ok) return null;
     return await res.blob();
   } catch (e) {
-    console.error('Erreur download fichier Drive', e);
+    console.error("Erreur download fichier Drive", e);
     return null;
   }
 }
 
 export async function deleteFileFromDrive(driveFileId: string): Promise<void> {
+  const token = getValidToken();
+  if (!token) return;
   try {
-    const token = gapi?.client?.getToken()?.access_token;
-    if (!token) return;
     await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch (e) {
-    console.error('Erreur delete fichier Drive', e);
+    console.error("Erreur delete fichier Drive", e);
   }
 }
