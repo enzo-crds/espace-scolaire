@@ -29,6 +29,7 @@ import {
   initGoogleIdentity,
   isGoogleConnected,
   uploadToGoogleDrive,
+  getGoogleUserFirstName,
 } from "@/services/gdrive";
 
 interface DataContextValue {
@@ -80,12 +81,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
           localData = driveData;
           await saveAppData(driveData);
         }
+        const googleFirstName = await getGoogleUserFirstName();
+        if (googleFirstName) {
+          localData = {
+            ...localData,
+            settings: { ...localData.settings, name: googleFirstName },
+          };
+          await saveAppData(localData);
+        }
       }
       setData(localData);
       setLoading(false);
     }
     init();
   }, []);
+
+  // Synchronisation toutes les 30 secondes si connecté à Google
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      if (isGoogleConnected()) {
+        syncWithDrive();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const syncWithDrive = async () => {
     if (!isGoogleConnected()) return;
