@@ -112,3 +112,14 @@ export interface Reminder {
   subjectId?: string;
   notified?: boolean;
 }
+
+export interface FileRecord {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  date: number;
+  subjectId: string | null;
+  category: FileRecord["category"];
+  driveFileId?: string;
+}
