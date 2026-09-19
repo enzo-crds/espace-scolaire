@@ -36,29 +36,23 @@ interface DataContextValue {
   loading: boolean;
   lastSaved: number | null;
   isDriveSyncing: boolean;
-  // Matières
   addSubject: (subject: Omit<Subject, "id" | "createdAt">) => Subject;
   updateSubject: (id: string, patch: Partial<Subject>) => void;
   deleteSubject: (id: string) => void;
-  // Documents
   addDocument: (doc: Omit<DocumentItem, "id" | "createdAt" | "updatedAt">) => DocumentItem;
   updateDocument: (id: string, patch: Partial<DocumentItem>) => void;
   deleteDocument: (id: string) => void;
-  // Notes
   addGrade: (grade: Omit<Grade, "id" | "createdAt">) => Grade;
   updateGrade: (id: string, patch: Partial<Grade>) => void;
   deleteGrade: (id: string) => void;
-  // Emploi du temps
   addSlot: (slot: Omit<ScheduleSlot, "id">) => ScheduleSlot;
   updateSlot: (id: string, patch: Partial<ScheduleSlot>) => void;
   deleteSlot: (id: string) => void;
-  // Fichiers
+  copyWeekSchedule: (sourceWeek: "A" | "B", targetWeek: "A" | "B") => void;
   addFile: (file: File, meta: { subjectId: string | null; category: FileRecord["category"] }) => Promise<FileRecord>;
   deleteFile: (id: string) => Promise<void>;
   readFile: (id: string) => Promise<Blob | null>;
-  // Paramètres
   updateSettings: (patch: Partial<Settings>) => void;
-  // Global
   replaceAllData: (data: AppData) => Promise<void>;
   resetAllData: () => Promise<void>;
   syncWithDrive: () => Promise<void>;
@@ -74,17 +68,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstLoad = useRef(true);
 
-  // Initialisation au démarrage
   useEffect(() => {
     async function init() {
       let localData = await loadAppData();
-      
-      // Initialise l'Identity Services
       initGoogleIdentity(async () => {
         await syncWithDrive();
       });
-
-      // Si Google est déjà connecté, on récupère la dernière version du Drive au lancement
       if (isGoogleConnected()) {
         const driveData = await downloadFromGoogleDrive();
         if (driveData) {
@@ -92,14 +81,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
           await saveAppData(driveData);
         }
       }
-
       setData(localData);
       setLoading(false);
     }
     init();
   }, []);
 
-  // Synchronisation manuelle/déclenchée
   const syncWithDrive = async () => {
     if (!isGoogleConnected()) return;
     setIsDriveSyncing(true);
@@ -113,7 +100,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setIsDriveSyncing(false);
   };
 
-  // Sauvegarde automatique locale + Drive
   useEffect(() => {
     if (loading) return;
     if (isFirstLoad.current) {
@@ -121,12 +107,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    
     saveTimeout.current = setTimeout(async () => {
       await saveAppData(data);
       setLastSaved(Date.now());
-
-      // Synchro silencieuse en arrière-plan si connecté à Drive
       if (isGoogleConnected()) {
         setIsDriveSyncing(true);
         await uploadToGoogleDrive(data);
@@ -139,7 +122,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, [data, loading]);
 
-  // ---------------- Matières ----------------
   const addSubject: DataContextValue["addSubject"] = (subject) => {
     const newSubject: Subject = { ...subject, id: generateId(), createdAt: Date.now() };
     setData((prev) => ({ ...prev, subjects: [...prev.subjects, newSubject] }));
@@ -163,7 +145,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  // ---------------- Documents ----------------
   const addDocument: DataContextValue["addDocument"] = (doc) => {
     const now = Date.now();
     const newDoc: DocumentItem = { ...doc, id: generateId(), createdAt: now, updatedAt: now };
@@ -192,7 +173,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ---------------- Notes ----------------
   const addGrade: DataContextValue["addGrade"] = (grade) => {
     const newGrade: Grade = { ...grade, id: generateId(), createdAt: Date.now() };
     setData((prev) => ({ ...prev, grades: [...prev.grades, newGrade] }));
@@ -210,7 +190,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData((prev) => ({ ...prev, grades: prev.grades.filter((g) => g.id !== id) }));
   };
 
-  // ---------------- Emploi du temps ----------------
   const addSlot: DataContextValue["addSlot"] = (slot) => {
     const newSlot: ScheduleSlot = { ...slot, id: generateId() };
     setData((prev) => ({ ...prev, schedule: [...prev.schedule, newSlot] }));
@@ -228,7 +207,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData((prev) => ({ ...prev, schedule: prev.schedule.filter((s) => s.id !== id) }));
   };
 
-  // ---------------- Fichiers ----------------
+  const copyWeekSchedule: DataContextValue["copyWeekSchedule"] = (sourceWeek, targetWeek) => {
+    setData((prev) => {
+      const filteredSchedule = prev.schedule.filter((s) => s.week !== targetWeek);
+      const sourceSlots = prev.schedule.filter((s) => s.week === sourceWeek);
+      const duplicated = sourceSlots.map((s) => ({
+        ...s,
+        id: generateId(),
+        week: targetWeek,
+      }));
+      return {
+        ...prev,
+        schedule: [...filteredSchedule, ...duplicated],
+      };
+    });
+  };
+
   const addFile: DataContextValue["addFile"] = async (file, meta) => {
     const id = generateId();
     await storeFileBlob(id, file);
@@ -254,12 +248,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return getFileBlob(id);
   };
 
-  // ---------------- Paramètres ----------------
   const updateSettings: DataContextValue["updateSettings"] = (patch) => {
     setData((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
   };
 
-  // ---------------- Global ----------------
   const replaceAllData: DataContextValue["replaceAllData"] = async (newData) => {
     setData(newData);
     await saveAppData(newData);
@@ -297,6 +289,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addSlot,
         updateSlot,
         deleteSlot,
+        copyWeekSchedule,
         addFile,
         deleteFile,
         readFile,
