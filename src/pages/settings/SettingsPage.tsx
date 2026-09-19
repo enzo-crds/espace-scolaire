@@ -31,7 +31,7 @@ import {
   isGoogleConnected,
 } from "@/services/gdrive";
 import { NotificationToggle } from "@/components/common/NotificationToggle";
-import { ReminderManager } from "@/components/reminders/ReminderManager";
+import { ReminderManager } from "@/components/reminders /ReminderManager";
 
 export function SettingsPage() {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
