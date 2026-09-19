@@ -109,7 +109,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  // Déclencheur automatique des rappels & alarmes toutes les minutes
+  // Vérification automatique des alarmes & rappels
   useEffect(() => {
     if (loading) return;
 
@@ -122,7 +122,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(reminderInterval);
   }, [data, loading]);
 
-  // Synchronisation toutes les 30 secondes si connecté à Google
+  // Synchronisation toutes les 30s
   useEffect(() => {
     if (loading) return;
     const interval = setInterval(() => {
