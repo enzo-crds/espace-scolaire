@@ -34,10 +34,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      <p className="px-2 text-[11px] text-slate-300 dark:text-slate-600">
-        Données stockées localement dans votre navigateur.
-      </p>
     </aside>
   );
 }
