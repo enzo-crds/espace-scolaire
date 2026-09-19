@@ -1,4 +1,14 @@
-import type { AppData } from "@/types";
+type Reminder = {
+  id: string;
+  title: string;
+  time: string;       // HH:mm
+  days?: number[];    // 0 = Sunday, 6 = Saturday
+  enabled: boolean;
+};
+
+type ReminderData = {
+  reminders?: Reminder[];
+};
 
 const notifiedKeys = new Set<string>();
 
@@ -20,51 +30,47 @@ function timeToMinutes(time: string): number {
 }
 
 function sendNativeNotification(title: string, body: string): void {
-  if (typeof window === "undefined" || !("Notification" in window)) {
+  if (
+    typeof window === "undefined" ||
+    !("Notification" in window) ||
+    Notification.permission !== "granted"
+  ) {
     return;
   }
 
-  if (Notification.permission === "granted") {
-    new Notification(title, { body });
-  }
+  new Notification(title, { body });
 }
 
-/**
- * Checks enabled reminders and triggers each reminder once per day.
- */
-export function checkAndTriggerReminders(data: AppData): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+export function checkAndTriggerReminders(data: ReminderData): void {
   const now = new Date();
   const todayIndex = now.getDay();
-  const todayStr = now.toISOString().slice(0, 10);
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   for (const reminder of data.reminders ?? []) {
-    if (!reminder.enabled) {
-      continue;
-    }
+    if (!reminder.enabled) continue;
 
-    const reminderDays = reminder.days ?? [];
-    const isToday =
-      reminderDays.length === 0 || reminderDays.includes(todayIndex);
-
+    const days = reminder.days ?? [];
+    const isToday = days.length === 0 || days.includes(todayIndex);
     const reminderMinutes = timeToMinutes(reminder.time);
-    const key = `reminder-${reminder.id}-${todayStr}`;
 
-    if (
-      isToday &&
-      currentMinutes === reminderMinutes &&
-      !notifiedKeys.has(key)
-    ) {
-      // Mark before sending so repeated interval calls cannot duplicate it.
-      notifiedKeys.add(key);
-      sendNativeNotification(
-        `⏰ ${reminder.title}`,
-        `Il est ${reminder.time} !`,
-      );
-    }
+    if (!isToday || reminderMinutes !== currentMinutes) continue;
+
+    const key = `${reminder.id}-${today}`;
+
+    if (notifiedKeys.has(key)) continue;
+
+    // Mark first because DataContext checks reminders immediately and every minute.
+    notifiedKeys.add(key);
+
+    sendNativeNotification(
+      `⏰ ${reminder.title}`,
+      `Il est ${reminder.time} !`,
+    );
   }
 }
