@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Plus, MapPin, User, Copy } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import type { ScheduleSlot, Week } from "@/types";
@@ -17,6 +17,20 @@ export function SchedulePage() {
   const [mobileDay, setMobileDay] = useState(currentDayIndex());
   const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number }>({ open: false });
   const [dragId, setDragId] = useState<string | null>(null);
+  
+  // Heure actuelle en minutes depuis minuit (ex: 10h30 = 10*60 + 30 = 630)
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setNowMinutes(now.getHours() * 60 + now.getMinutes());
+    }, 60000); // Mise à jour chaque minute
+    return () => clearInterval(timer);
+  }, []);
 
   const visibleSlots = useMemo(
     () => data.schedule.filter((s) => s.week === "BOTH" || s.week === weekView),
@@ -68,6 +82,10 @@ export function SchedulePage() {
       </button>
     );
   };
+
+  // Calcul de la position de la barre actuelle si elle est dans la plage visible (07:00 - 19:00)
+  const isTimeVisible = nowMinutes >= DAY_START && nowMinutes <= DAY_END;
+  const nowTop = (nowMinutes - DAY_START) * PX_PER_MIN;
 
   return (
     <div className="space-y-5 pb-10">
@@ -141,20 +159,32 @@ export function SchedulePage() {
                   {hourMarks.map((m) => (
                     <div key={m} className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-700/50" style={{ top: (m - DAY_START) * PX_PER_MIN }} />
                   ))}
+                  
+                  {/* Ligne indicateur du moment présent sur le jour correspondant (ou sur chaque colonne / ou s'affiche si c'est le jour actuel) */}
+                  {currentDayIndex() === dayIdx && isTimeVisible && (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
+                      style={{ top: nowTop }}
+                    >
+                      <div className="h-2 w-2 -translate-x-1 rounded-full bg-rose-500" />
+                      <div className="h-[2px] w-full bg-rose-500" />
+                    </div>
+                  )}
+
                   {visibleSlots
                     .filter((s) => s.day === dayIdx)
                     .map((s) => {
                       const top = Math.max(0, (timeToMinutes(s.start) - DAY_START) * PX_PER_MIN);
                       const height = Math.max(28, (timeToMinutes(s.end) - timeToMinutes(s.start)) * PX_PER_MIN);
                       return (
-                        <div key={s.id} className="absolute inset-x-0.5" style={{ top, height }}>
+                        <div key={s.id} className="absolute inset-x-0.5 z-10" style={{ top, height }}>
                           <SlotCard slot={s} />
                         </div>
                       );
                     })}
                   <button
                     onClick={() => setModal({ open: true, day: dayIdx })}
-                    className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400 opacity-0 shadow transition hover:text-[var(--accent)] group-hover:opacity-100 hover:opacity-100 dark:bg-slate-700"
+                    className="absolute bottom-1 right-1 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400 opacity-0 shadow transition hover:text-[var(--accent)] group-hover:opacity-100 hover:opacity-100 dark:bg-slate-700"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
