@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sun, Moon, Laptop, Download, Upload, Trash2, Database } from "lucide-react";
+import { Sun, Moon, Laptop, Download, Upload, Trash2, Database, Cloud, RefreshCw } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
@@ -9,11 +9,10 @@ import { Field, inputClass, btnPrimary, btnSecondary, btnDanger } from "@/compon
 import type { ThemeMode } from "@/types";
 import { SUBJECT_COLORS } from "@/types";
 import { promptGoogleLogin, logoutGoogle, isGoogleConnected } from "@/services/gdrive";
-import { Cloud, CloudOff, RefreshCw } from "lucide-react";
 
 export function SettingsPage() {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
-  const { data, updateSettings, replaceAllData, resetAllData } = useData();
+  const { data, updateSettings, replaceAllData, resetAllData, syncWithDrive, isDriveSyncing } = useData();
   const { notify, confirm } = useUI();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [usage, setUsage] = useState<{ usage: number; quota: number } | null>(null);
@@ -109,6 +108,48 @@ export function SettingsPage() {
             />
           ))}
         </div>
+      </section>
+
+      {/* Synchronisation Google Drive */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+        <h2 className="mb-1 font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <Cloud className="h-5 w-5 text-[var(--accent)]" /> Synchronisation Google Drive
+        </h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Connectez votre compte Google pour synchroniser automatiquement vos notes, cours et emploi du temps entre vos PC, téléphones et tablettes.
+        </p>
+
+        {isGoogleConnected() ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <Cloud className="h-4 w-4" /> Connecté à Google Drive (Synchro auto active)
+            </span>
+            <button
+              className={btnSecondary}
+              onClick={() => syncWithDrive()}
+              disabled={isDriveSyncing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isDriveSyncing ? "animate-spin" : ""}`} />
+              Forcer la synchronisation
+            </button>
+            <button
+              className="text-xs text-rose-500 hover:underline"
+              onClick={() => {
+                logoutGoogle();
+                notify("Déconnecté de Google Drive");
+              }}
+            >
+              Déconnecter
+            </button>
+          </div>
+        ) : (
+          <button
+            className={btnPrimary}
+            onClick={() => promptGoogleLogin()}
+          >
+            <Cloud className="h-4 w-4" /> Se connecter avec Google
+          </button>
+        )}
       </section>
 
       {/* Données */}
