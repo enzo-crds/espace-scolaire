@@ -14,6 +14,7 @@ import type {
   ScheduleSlot,
   Settings,
   Subject,
+  Reminder,
 } from "@/types";
 import {
   EMPTY_DATA,
@@ -34,9 +35,12 @@ import {
   downloadFileFromDrive,
   deleteFileFromDrive,
 } from "@/services/gdrive";
+import { checkAndTriggerReminders } from "@/services/scheduler";
 
 interface DataContextValue {
   data: AppData;
+  setData: React.Dispatch<React.SetStateAction<AppData>>;
+  saveAppData: (data: AppData) => Promise<void>;
   loading: boolean;
   lastSaved: number | null;
   isDriveSyncing: boolean;
@@ -75,14 +79,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function init() {
       let localData = await loadAppData();
+      
       initGoogleIdentity(async () => {
         await syncWithDrive();
       });
+
       if (isGoogleConnected()) {
         const driveData = await downloadFromGoogleDrive();
         if (driveData) {
-          localData = driveData;
-          await saveAppData(driveData);
+          localData = {
+            ...driveData,
+            reminders: driveData.reminders || localData.reminders || [],
+          };
+          await saveAppData(localData);
         }
         const googleFirstName = await getGoogleUserFirstName();
         if (googleFirstName) {
@@ -93,11 +102,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
           await saveAppData(localData);
         }
       }
+
       setData(localData);
       setLoading(false);
     }
     init();
   }, []);
+
+  // Déclencheur automatique des rappels & alarmes toutes les minutes
+  useEffect(() => {
+    if (loading) return;
+
+    checkAndTriggerReminders(data);
+
+    const reminderInterval = setInterval(() => {
+      checkAndTriggerReminders(data);
+    }, 60000);
+
+    return () => clearInterval(reminderInterval);
+  }, [data, loading]);
 
   // Synchronisation toutes les 30 secondes si connecté à Google
   useEffect(() => {
@@ -115,8 +138,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setIsDriveSyncing(true);
     const driveData = await downloadFromGoogleDrive();
     if (driveData) {
-      setData(driveData);
-      await saveAppData(driveData);
+      setData((prevLocal) => {
+        const mergedData: AppData = {
+          ...driveData,
+          grades: driveData.grades || prevLocal.grades || [],
+          reminders: driveData.reminders || prevLocal.reminders || [],
+        };
+        saveAppData(mergedData);
+        return mergedData;
+      });
     } else {
       await uploadToGoogleDrive(data);
     }
@@ -138,7 +168,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await uploadToGoogleDrive(data);
         setIsDriveSyncing(false);
       }
-    }, 500);
+    }, 300);
 
     return () => {
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -249,7 +279,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addFile: DataContextValue["addFile"] = async (file, meta) => {
     const id = generateId();
-    await storeFileBlob(id, file); // Offline cache local
+    await storeFileBlob(id, file);
     let driveFileId: string | undefined;
     if (isGoogleConnected()) {
       const uploadedId = await uploadFileToDrive(file, file.name);
@@ -284,7 +314,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const driveBlob = await downloadFileFromDrive(record.driveFileId);
       if (driveBlob) return driveBlob;
     }
-    return getFileBlob(id); // fallback local IndexedDB
+    return getFileBlob(id);
   };
 
   const updateSettings: DataContextValue["updateSettings"] = (patch) => {
@@ -313,6 +343,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider
       value={{
         data,
+        setData,
+        saveAppData,
         loading,
         lastSaved,
         isDriveSyncing,
