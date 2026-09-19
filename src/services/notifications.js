@@ -11,7 +11,7 @@ export async function registerServiceWorker() {
 }
 
 // Demande la permission à l'utilisateur (DOIT être appelé sur un clic bouton, ex: Paramètres)
-export async function requestNotificationPermission(): Promise<boolean> {
+export async function requestNotificationPermission() {
   if (!('Notification' in window)) return false;
 
   let permission = Notification.permission;
@@ -23,7 +23,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 // Déclenche une notification système immédiate via le Service Worker
-export async function sendNativeNotification(title: string, body: string) {
+export async function sendNativeNotification(title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   if ('serviceWorker' in navigator) {
@@ -34,7 +34,7 @@ export async function sendNativeNotification(title: string, body: string) {
       vibrate: [200, 100, 200],
       tag: 'school-reminder',
       renotify: true
-    } as NotificationOptions);
+    });
   } else {
     new Notification(title, { body, icon: '/favicon.ico' });
   }
