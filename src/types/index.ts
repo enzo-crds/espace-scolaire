@@ -103,3 +103,12 @@ export const SUBJECT_ICONS = [
   "📐", "📚", "🇬🇧", "🇪🇸", "🇩🇪", "🧪", "🔬", "💻", "🎨", "🎵",
   "🏃", "🌍", "📖", "🧮", "⚙️", "🔧", "📊", "🗣️", "✏️", "🧬",
 ];
+
+export interface Reminder {
+  id: string;
+  title: string;
+  date: string; // ex: "2026-09-20"
+  time: string; // ex: "08:00"
+  subjectId?: string;
+  notified?: boolean;
+}
