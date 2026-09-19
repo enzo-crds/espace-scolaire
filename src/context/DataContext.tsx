@@ -30,6 +30,9 @@ import {
   isGoogleConnected,
   uploadToGoogleDrive,
   getGoogleUserFirstName,
+  uploadFileToDrive,
+  downloadFileFromDrive,
+  deleteFileFromDrive,
 } from "@/services/gdrive";
 
 interface DataContextValue {
@@ -184,11 +187,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const deleteDocument: DataContextValue["deleteDocument"] = (id) => {
     setData((prev) => {
       const doc = prev.documents.find((d) => d.id === id);
-      if (doc?.fileId) deleteFileBlob(doc.fileId);
+      if (doc?.fileId) {
+        deleteFile(doc.fileId);
+      }
       return {
         ...prev,
         documents: prev.documents.filter((d) => d.id !== id),
-        files: prev.files.filter((f) => f.id !== doc?.fileId),
       };
     });
   };
@@ -245,7 +249,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addFile: DataContextValue["addFile"] = async (file, meta) => {
     const id = generateId();
-    await storeFileBlob(id, file);
+    await storeFileBlob(id, file); // Offline cache local
+    let driveFileId: string | undefined;
+    if (isGoogleConnected()) {
+      const uploadedId = await uploadFileToDrive(file, file.name);
+      if (uploadedId) driveFileId = uploadedId;
+    }
     const record: FileRecord = {
       id,
       name: file.name,
@@ -254,18 +263,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
       date: Date.now(),
       subjectId: meta.subjectId,
       category: meta.category,
-    };
+      driveFileId,
+    } as FileRecord;
     setData((prev) => ({ ...prev, files: [...prev.files, record] }));
     return record;
   };
 
   const deleteFile: DataContextValue["deleteFile"] = async (id) => {
+    const record = data.files.find((f) => f.id === id) as FileRecord & { driveFileId?: string };
+    if (record?.driveFileId) {
+      await deleteFileFromDrive(record.driveFileId);
+    }
     await deleteFileBlob(id);
     setData((prev) => ({ ...prev, files: prev.files.filter((f) => f.id !== id) }));
   };
 
   const readFile: DataContextValue["readFile"] = async (id) => {
-    return getFileBlob(id);
+    const record = data.files.find((f) => f.id === id) as FileRecord & { driveFileId?: string };
+    if (record?.driveFileId && isGoogleConnected()) {
+      const driveBlob = await downloadFileFromDrive(record.driveFileId);
+      if (driveBlob) return driveBlob;
+    }
+    return getFileBlob(id); // fallback local IndexedDB
   };
 
   const updateSettings: DataContextValue["updateSettings"] = (patch) => {
