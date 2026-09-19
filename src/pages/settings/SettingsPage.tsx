@@ -9,6 +9,7 @@ import { Field, inputClass, btnPrimary, btnSecondary, btnDanger } from "@/compon
 import type { ThemeMode } from "@/types";
 import { SUBJECT_COLORS } from "@/types";
 import { promptGoogleLogin, logoutGoogle, isGoogleConnected } from "@/services/gdrive";
+import { NotificationToggle } from "@/components/common/NotificationToggle";
 
 export function SettingsPage() {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
