@@ -18,14 +18,12 @@ export function SubjectModal({ open, onClose, subject }: SubjectModalProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
   const [icon, setIcon] = useState(SUBJECT_ICONS[0]);
-  const [coefficient, setCoefficient] = useState(1);
 
   useEffect(() => {
     if (open) {
       setName(subject?.name || "");
       setColor(subject?.color || SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)]);
       setIcon(subject?.icon || SUBJECT_ICONS[Math.floor(Math.random() * SUBJECT_ICONS.length)]);
-      setCoefficient(subject?.coefficient ?? 1);
     }
   }, [open, subject]);
 
@@ -34,15 +32,12 @@ export function SubjectModal({ open, onClose, subject }: SubjectModalProps) {
       notify("Le nom de la matière est obligatoire", "error");
       return;
     }
-    if (coefficient <= 0) {
-      notify("Le coefficient doit être supérieur à 0", "error");
-      return;
-    }
+    const payload = { name: name.trim(), color, icon, coefficient: 1 };
     if (subject) {
-      updateSubject(subject.id, { name: name.trim(), color, icon, coefficient });
+      updateSubject(subject.id, payload);
       notify("Matière modifiée");
     } else {
-      addSubject({ name: name.trim(), color, icon, coefficient });
+      addSubject(payload);
       notify("Matière créée avec succès");
     }
     onClose();
@@ -63,17 +58,6 @@ export function SubjectModal({ open, onClose, subject }: SubjectModalProps) {
       <div className="space-y-4">
         <Field label="Nom de la matière">
           <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex : Mathématiques" />
-        </Field>
-
-        <Field label="Coefficient (pour la moyenne générale pondérée)">
-          <input
-            type="number"
-            min={0.5}
-            step={0.5}
-            className={inputClass}
-            value={coefficient}
-            onChange={(e) => setCoefficient(Number(e.target.value))}
-          />
         </Field>
 
         <Field label="Couleur">
