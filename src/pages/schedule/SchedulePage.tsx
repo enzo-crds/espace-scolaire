@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Plus, MapPin, User, Copy } from "lucide-react";
 import { useData } from "@/context/DataContext";
-import { useUI } from "@/context/UIContext";
 import type { ScheduleSlot, Week } from "@/types";
 import { DAYS, timeToMinutes, minutesToTime, currentDayIndex } from "@/utils/date";
 import { SlotModal } from "./SlotModal";
@@ -14,7 +13,6 @@ const PX_PER_MIN = 1.2;
 
 export function SchedulePage() {
   const { data, updateSlot, updateSettings, copyWeekSchedule } = useData();
-  const { confirm, notify } = useUI();
   const [weekView, setWeekView] = useState<Week>(data.settings.currentWeek);
   const [mobileDay, setMobileDay] = useState(currentDayIndex());
   const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number }>({ open: false });
@@ -44,21 +42,11 @@ export function SchedulePage() {
     setDragId(null);
   };
 
-  const handleCopyWeek = async () => {
-    if (weekView === "BOTH") {
-      notify("Sélectionnez la Semaine A ou B pour copier", "warning");
-      return;
-    }
+  const handleCopyWeek = () => {
+    if (weekView === "BOTH") return;
     const targetWeek: "A" | "B" = weekView === "A" ? "B" : "A";
-    const ok = await confirm({
-      title: `Copier Semaine ${weekView} vers Semaine ${targetWeek} ?`,
-      message: `Cela va écraser les créneaux spécifiques de la semaine ${targetWeek}.`,
-      confirmLabel: "Copier",
-      danger: true,
-    });
-    if (ok) {
-      copyWeekSchedule(weekView, targetWeek);
-      notify(`Semaine ${weekView} copiée vers la semaine ${targetWeek} !`);
+    if (window.confirm(`Copier la Semaine ${weekView} vers la Semaine ${targetWeek} ? Cela écrasera les créneaux spécifiques de la semaine ${targetWeek}.`)) {
+      copyWeekSchedule?.(weekView, targetWeek);
     }
   };
 
@@ -89,7 +77,7 @@ export function SchedulePage() {
           <p className="mt-1 text-sm text-slate-400">Glissez-déposez vos créneaux pour les réorganiser (bureau).</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {weekView !== "BOTH" && (
+          {weekView !== "BOTH" && copyWeekSchedule && (
             <button className={btnSecondary} onClick={handleCopyWeek}>
               <Copy className="h-3.5 w-3.5" /> Copier vers sem. {weekView === "A" ? "B" : "A"}
             </button>
