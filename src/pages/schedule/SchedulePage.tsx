@@ -1,0 +1,218 @@
+import { useMemo, useState } from "react";
+import { Plus, MapPin, User } from "lucide-react";
+import { useData } from "@/context/DataContext";
+import type { ScheduleSlot, Week } from "@/types";
+import { DAYS, timeToMinutes, minutesToTime, currentDayIndex } from "@/utils/date";
+import { SlotModal } from "./SlotModal";
+import { EmptyState } from "@/components/common/EmptyState";
+import { btnPrimary, btnSecondary } from "@/components/common/FormField";
+
+const DAY_START = 7 * 60; // 07:00
+const DAY_END = 19 * 60; // 19:00
+const PX_PER_MIN = 1.1;
+
+export function SchedulePage() {
+  const { data, updateSlot, updateSettings } = useData();
+  const [weekView, setWeekView] = useState<Week>(data.settings.currentWeek);
+  const [mobileDay, setMobileDay] = useState(currentDayIndex());
+  const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number }>({ open: false });
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  const visibleSlots = useMemo(
+    () => data.schedule.filter((s) => s.week === "BOTH" || s.week === weekView),
+    [data.schedule, weekView]
+  );
+
+  const subjectOf = (id: string | null) => data.subjects.find((s) => s.id === id);
+
+  const gridHeight = (DAY_END - DAY_START) * PX_PER_MIN;
+
+  const hourMarks: number[] = [];
+  for (let m = DAY_START; m <= DAY_END; m += 60) hourMarks.push(m);
+
+  const handleDrop = (day: number, clientY: number, containerTop: number) => {
+    if (!dragId) return;
+    const slot = data.schedule.find((s) => s.id === dragId);
+    if (!slot) return;
+    const duration = timeToMinutes(slot.end) - timeToMinutes(slot.start);
+    const offsetMin = (clientY - containerTop) / PX_PER_MIN;
+    let newStart = Math.round((DAY_START + offsetMin) / 5) * 5;
+    newStart = Math.max(DAY_START, Math.min(newStart, DAY_END - duration));
+    updateSlot(slot.id, { day, start: minutesToTime(newStart), end: minutesToTime(newStart + duration) });
+    setDragId(null);
+  };
+
+  const SlotCard = ({ slot, compact }: { slot: ScheduleSlot; compact?: boolean }) => {
+    const subject = subjectOf(slot.subjectId);
+    const color = slot.color || subject?.color || "#6366f1";
+    return (
+      <button
+        draggable={!compact}
+        onDragStart={() => setDragId(slot.id)}
+        onClick={() => setModal({ open: true, slot })}
+        className="w-full overflow-hidden rounded-lg border-l-4 bg-white px-2 py-1.5 text-left shadow-sm transition hover:shadow-md dark:bg-slate-800"
+        style={{ borderColor: color }}
+      >
+        <p className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">
+          {subject ? `${subject.icon} ${subject.name}` : slot.label}
+        </p>
+        <p className="truncate text-[10px] text-slate-400">{slot.start}–{slot.end}{slot.room ? ` · ${slot.room}` : ""}</p>
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-5 pb-10">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Emploi du temps</h1>
+          <p className="mt-1 text-sm text-slate-400">Glissez-déposez vos créneaux pour les réorganiser (bureau).</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium dark:bg-slate-800">
+            {(["A", "B"] as const).map((w) => (
+              <button
+                key={w}
+                onClick={() => {
+                  setWeekView(w);
+                  updateSettings({ currentWeek: w });
+                }}
+                className={`rounded-md px-3 py-1.5 transition ${weekView === w ? "bg-white shadow-sm dark:bg-slate-700" : "text-slate-500"}`}
+              >
+                Semaine {w}
+              </button>
+            ))}
+          </div>
+          <button className={btnPrimary} onClick={() => setModal({ open: true, day: mobileDay })}>
+            <Plus className="h-4 w-4" /> Créneau
+          </button>
+        </div>
+      </div>
+
+      {data.schedule.length === 0 ? (
+        <EmptyState
+          icon={<Plus className="h-6 w-6" />}
+          title="Votre emploi du temps est vide"
+          description="Ajoutez votre premier créneau de cours."
+          action={<button className={btnPrimary} onClick={() => setModal({ open: true, day: 0 })}><Plus className="h-4 w-4" /> Ajouter un créneau</button>}
+        />
+      ) : (
+        <>
+          {/* Vue grille — bureau/tablette */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-800 md:block">
+            <div className="grid min-w-[900px] grid-cols-[50px_repeat(7,1fr)] gap-2">
+              <div />
+              {DAYS.map((d) => (
+                <div key={d} className="text-center text-xs font-semibold text-slate-500 dark:text-slate-300">{d}</div>
+              ))}
+
+              <div className="relative" style={{ height: gridHeight }}>
+                {hourMarks.map((m) => (
+                  <div key={m} className="absolute right-1 -translate-y-2 text-[10px] text-slate-300" style={{ top: (m - DAY_START) * PX_PER_MIN }}>
+                    {minutesToTime(m)}
+                  </div>
+                ))}
+              </div>
+
+              {DAYS.map((_, dayIdx) => (
+                <div
+                  key={dayIdx}
+                  className="relative rounded-lg bg-slate-50/60 dark:bg-slate-900/30"
+                  style={{ height: gridHeight }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    handleDrop(dayIdx, e.clientY, rect.top);
+                  }}
+                >
+                  {hourMarks.map((m) => (
+                    <div key={m} className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-700/50" style={{ top: (m - DAY_START) * PX_PER_MIN }} />
+                  ))}
+                  {visibleSlots
+                    .filter((s) => s.day === dayIdx)
+                    .map((s) => {
+                      const top = Math.max(0, (timeToMinutes(s.start) - DAY_START) * PX_PER_MIN);
+                      const height = Math.max(28, (timeToMinutes(s.end) - timeToMinutes(s.start)) * PX_PER_MIN);
+                      return (
+                        <div key={s.id} className="absolute inset-x-0.5" style={{ top, height }}>
+                          <SlotCard slot={s} />
+                        </div>
+                      );
+                    })}
+                  <button
+                    onClick={() => setModal({ open: true, day: dayIdx })}
+                    className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400 opacity-0 shadow transition hover:text-[var(--accent)] group-hover:opacity-100 hover:opacity-100 dark:bg-slate-700"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Vue liste — mobile */}
+          <div className="md:hidden">
+            <div className="mb-3 flex gap-1 overflow-x-auto pb-1">
+              {DAYS.map((d, i) => (
+                <button
+                  key={d}
+                  onClick={() => setMobileDay(i)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    mobileDay === i ? "bg-[var(--accent)] text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800"
+                  }`}
+                >
+                  {d.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {visibleSlots
+                .filter((s) => s.day === mobileDay)
+                .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
+                .map((s) => {
+                  const subject = subjectOf(s.subjectId);
+                  const color = s.color || subject?.color || "#6366f1";
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setModal({ open: true, slot: s })}
+                      className="flex w-full items-center gap-3 rounded-xl border-l-4 bg-white p-3 text-left shadow-sm dark:bg-slate-800"
+                      style={{ borderColor: color }}
+                    >
+                      <div className="w-14 shrink-0 text-xs font-semibold text-slate-500">
+                        {s.start}<br />{s.end}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                          {subject ? `${subject.icon} ${subject.name}` : s.label}
+                        </p>
+                        <div className="mt-0.5 flex gap-3 text-[11px] text-slate-400">
+                          {s.room && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{s.room}</span>}
+                          {s.teacher && <span className="flex items-center gap-1"><User className="h-3 w-3" />{s.teacher}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              {visibleSlots.filter((s) => s.day === mobileDay).length === 0 && (
+                <p className="py-10 text-center text-sm text-slate-400">Aucun cours ce jour-là.</p>
+              )}
+            </div>
+            <button className={`${btnSecondary} mt-3 w-full`} onClick={() => setModal({ open: true, day: mobileDay })}>
+              <Plus className="h-4 w-4" /> Ajouter un créneau ce jour
+            </button>
+          </div>
+        </>
+      )}
+
+      <SlotModal
+        open={modal.open}
+        onClose={() => setModal({ open: false })}
+        slot={modal.slot}
+        defaultDay={modal.day}
+        defaultWeek={weekView}
+      />
+    </div>
+  );
+}

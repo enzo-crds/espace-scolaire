@@ -1,0 +1,77 @@
+import { useEffect, useState } from "react";
+import { Download, FileText, ExternalLink } from "lucide-react";
+import type { FileRecord } from "@/types";
+import { useData } from "@/context/DataContext";
+import { isDocxFile, isImageFile, isPdfFile } from "@/services/docx";
+import { humanFileSize } from "@/services/storage";
+
+export function FilePreview({ file }: { file: FileRecord }) {
+  const { readFile } = useData();
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    readFile(file.id).then((blob) => {
+      if (blob) {
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      }
+    });
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [file.id, readFile]);
+
+  const fakeFile = { type: file.type, name: file.name } as File;
+  const isImg = isImageFile(fakeFile);
+  const isPdf = isPdfFile(fakeFile);
+  const isDocx = isDocxFile(fakeFile);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{file.name}</p>
+          <p className="text-xs text-slate-400">{humanFileSize(file.size)}</p>
+        </div>
+        {url && (
+          <div className="flex shrink-0 gap-1">
+            <a href={url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" title="Ouvrir">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+            <a href={url} download={file.name} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" title="Télécharger">
+              <Download className="h-4 w-4" />
+            </a>
+          </div>
+        )}
+      </div>
+
+      {!url && <div className="flex h-32 items-center justify-center text-xs text-slate-400">Chargement…</div>}
+
+      {url && isImg && (
+        <img src={url} alt={file.name} className="max-h-80 w-full rounded-lg object-contain" />
+      )}
+
+      {url && isPdf && (
+        <iframe src={url} title={file.name} className="h-[420px] w-full rounded-lg border border-slate-100 dark:border-slate-700" />
+      )}
+
+      {url && isDocx && (
+        <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-900/50">
+          <FileText className="h-8 w-8 shrink-0 text-[var(--accent)]" />
+          <p>
+            L'aperçu direct des fichiers Word (.docx) n'est pas possible dans le navigateur. Utilisez
+            « Ouvrir » ou « Télécharger », ou importez son contenu dans l'éditeur depuis le formulaire d'ajout.
+          </p>
+        </div>
+      )}
+
+      {url && !isImg && !isPdf && !isDocx && (
+        <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-500 dark:bg-slate-900/50">
+          <FileText className="h-8 w-8 shrink-0 text-[var(--accent)]" />
+          <p>Aperçu non disponible pour ce type de fichier. Utilisez « Ouvrir » ou « Télécharger ».</p>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,157 @@
+import { useEffect, useRef, useState } from "react";
+import { Sun, Moon, Laptop, Download, Upload, Trash2, Database } from "lucide-react";
+import { useTheme } from "@/context/ThemeContext";
+import { useData } from "@/context/DataContext";
+import { useUI } from "@/context/UIContext";
+import { exportDataAsJson, importDataFromJson } from "@/services/export";
+import { estimateStorageUsage, humanFileSize } from "@/services/storage";
+import { Field, inputClass, btnPrimary, btnSecondary, btnDanger } from "@/components/common/FormField";
+import type { ThemeMode } from "@/types";
+import { SUBJECT_COLORS } from "@/types";
+
+export function SettingsPage() {
+  const { theme, setTheme, accentColor, setAccentColor } = useTheme();
+  const { data, updateSettings, replaceAllData, resetAllData } = useData();
+  const { notify, confirm } = useUI();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [usage, setUsage] = useState<{ usage: number; quota: number } | null>(null);
+
+  useEffect(() => {
+    estimateStorageUsage().then(setUsage);
+  }, [data]);
+
+  const themeOptions: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
+    { value: "light", label: "Clair", icon: Sun },
+    { value: "dark", label: "Sombre", icon: Moon },
+    { value: "system", label: "Système", icon: Laptop },
+  ];
+
+  const handleImport = async (file: File) => {
+    try {
+      const imported = await importDataFromJson(file);
+      const ok = await confirm({
+        title: "Remplacer toutes les données ?",
+        message: "L'import va écraser vos données actuelles par celles du fichier sélectionné.",
+        danger: true,
+        confirmLabel: "Importer",
+      });
+      if (ok) {
+        await replaceAllData(imported);
+        notify("Données importées avec succès");
+      }
+    } catch {
+      notify("Fichier invalide, import impossible", "error");
+    }
+  };
+
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: "Supprimer toutes les données ?",
+      message: "Cette action supprimera définitivement toutes vos matières, cours, fiches, notes et votre emploi du temps.",
+      danger: true,
+      confirmLabel: "Tout supprimer",
+    });
+    if (ok) {
+      await resetAllData();
+      notify("Toutes les données ont été supprimées");
+    }
+  };
+
+  return (
+    <div className="max-w-2xl space-y-6 pb-10">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Paramètres</h1>
+        <p className="mt-1 text-sm text-slate-400">Personnalisez votre espace scolaire.</p>
+      </div>
+
+      {/* Profil */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+        <h2 className="mb-4 font-semibold text-slate-800 dark:text-slate-100">Profil</h2>
+        <Field label="Nom / prénom affiché sur l'accueil">
+          <input
+            className={inputClass}
+            value={data.settings.studentName}
+            onChange={(e) => updateSettings({ studentName: e.target.value })}
+          />
+        </Field>
+      </section>
+
+      {/* Apparence */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+        <h2 className="mb-4 font-semibold text-slate-800 dark:text-slate-100">Apparence</h2>
+
+        <p className="mb-2 text-sm font-medium text-slate-500">Thème</p>
+        <div className="mb-5 grid grid-cols-3 gap-2">
+          {themeOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setTheme(opt.value)}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 text-xs font-medium transition ${
+                theme === opt.value ? "border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]" : "border-slate-100 text-slate-500 dark:border-slate-700"
+              }`}
+            >
+              <opt.icon className="h-5 w-5" />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <p className="mb-2 text-sm font-medium text-slate-500">Couleur d'accent</p>
+        <div className="flex flex-wrap gap-2">
+          {SUBJECT_COLORS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setAccentColor(c)}
+              className={`h-8 w-8 rounded-full border-2 transition ${accentColor === c ? "border-slate-900 dark:border-white" : "border-transparent"}`}
+              style={{ background: c }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Données */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+        <h2 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">Données & sauvegarde</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Vos données sont stockées uniquement dans ce navigateur (IndexedDB). Elles ne sont jamais envoyées sur un
+          serveur. Pensez à exporter régulièrement une sauvegarde, notamment avant de changer de navigateur ou
+          d'ordinateur.
+        </p>
+
+        {usage && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-900/50">
+            <Database className="h-4 w-4 shrink-0" />
+            Stockage utilisé : environ {humanFileSize(usage.usage)}
+            {usage.quota ? ` sur ${humanFileSize(usage.quota)} disponibles` : ""}.
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3">
+          <button className={btnPrimary} onClick={() => exportDataAsJson(data)}>
+            <Download className="h-4 w-4" /> Exporter mes données (JSON)
+          </button>
+          <button className={btnSecondary} onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4" /> Importer une sauvegarde
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImport(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        <div className="mt-5 border-t border-slate-100 pt-5 dark:border-slate-700">
+          <button className={btnDanger} onClick={handleReset}>
+            <Trash2 className="h-4 w-4" /> Supprimer toutes les données
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
