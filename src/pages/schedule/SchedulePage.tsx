@@ -99,8 +99,6 @@ export function SchedulePage() {
   const isTimeVisible = nowMinutes >= DAY_START && nowMinutes <= DAY_END;
   const nowTop = (nowMinutes - DAY_START) * PX_PER_MIN;
 
-  const currentWeekLabel = weekView === "A" ? "Pair" : weekView === "B" ? "Impair" : "Les deux";
-
   return (
     <div className="space-y-5 pb-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -277,6 +275,7 @@ export function SchedulePage() {
         slot={modal.slot}
         defaultDay={modal.day}
         defaultWeek={weekView}
+        defaultStart={modal.defaultStart}
       />
     </div>
   );
