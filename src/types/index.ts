@@ -123,3 +123,23 @@ export interface FileRecord {
   category: FileRecord["category"];
   driveFileId?: string;
 }
+
+export interface Reminder {
+  id: string;
+  title: string;
+  time: string; // Format "HH:mm"
+  days: number[]; // Tableau des jours [0..6] (0 = Lundi, etc.) ou [] pour une fois
+  enabled: boolean;
+  type: "ALARM" | "REMINDER";
+}
+
+// À inclure dans ton interface AppData :
+export interface AppData {
+  subjects: Subject[];
+  documents: DocumentItem[];
+  grades: Grade[];
+  schedule: ScheduleSlot[];
+  files: FileRecord[];
+  settings: Settings;
+  reminders?: Reminder[]; // <-- NOUVEAU
+}
