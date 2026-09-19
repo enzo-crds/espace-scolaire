@@ -14,10 +14,10 @@ interface SlotModalProps {
   defaultDay?: number;
   defaultWeek?: Week;
   defaultStart?: string;
-  defaultEnd?: string; // <-- Ajout ici
+  defaultEnd?: string;
 }
 
-export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "BOTH", defaultStart }: SlotModalProps) {
+export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "BOTH", defaultStart, defaultEnd }: SlotModalProps) {
   const { data, addSlot, updateSlot, deleteSlot } = useData();
   const { notify, confirm } = useUI();
 
@@ -39,6 +39,8 @@ export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "
       setStart(initialStart);
       if (slot?.end) {
         setEnd(slot.end);
+      } else if (defaultEnd) {
+        setEnd(defaultEnd);
       } else {
         const startMin = timeToMinutes(initialStart);
         setEnd(minutesToTime(Math.min(1040, startMin + 60))); // +1h ou plafonné à 17:20 (1040 min)
@@ -49,7 +51,7 @@ export function SlotModal({ open, onClose, slot, defaultDay = 0, defaultWeek = "
       setTeacher(slot?.teacher || "");
       setColor(slot?.color || SUBJECT_COLORS[0]);
     }
-  }, [open, slot, defaultDay, defaultWeek, defaultStart]);
+  }, [open, slot, defaultDay, defaultWeek, defaultStart, defaultEnd]);
 
   const handleSubmit = () => {
     if (!subjectId && !label.trim()) return notify("Choisissez une matière ou saisissez un libellé", "error");
