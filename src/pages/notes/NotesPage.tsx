@@ -62,7 +62,7 @@ export function NotesPage() {
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800 lg:col-span-1">
           <p className="text-sm font-medium text-slate-400">Moyenne générale</p>
           <p className="mt-2 text-4xl font-bold text-slate-900 dark:text-white">
-            {general !== null ? round(general, 2) : "—"}
+            {general !== null ? round(general, 1) : "—"}
             <span className="text-lg font-medium text-slate-400">/20</span>
           </p>
           <div className="mt-4 flex rounded-lg bg-slate-100 p-1 text-xs font-medium dark:bg-slate-700">
@@ -89,7 +89,7 @@ export function NotesPage() {
             <SubjectBarChart
               bars={averages
                 .filter((a) => a.average !== null)
-                .map((a) => ({ label: a.subject.name, value: round(a.average as number, 2), color: a.subject.color }))}
+                .map((a) => ({ label: a.subject.name, value: round(a.average as number, 1), color: a.subject.color }))}
             />
           )}
         </div>
@@ -119,7 +119,7 @@ export function NotesPage() {
                     <p className="text-xs text-slate-400">{count} note{count > 1 ? "s" : ""} · coef. matière {subject.coefficient}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{average !== null ? round(average, 2) : "—"}<span className="text-xs font-normal text-slate-400">/20</span></p>
+                    <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{average !== null ? round(average, 1) : "—"}<span className="text-xs font-normal text-slate-400">/20</span></p>
                   </div>
                   <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${isOpen ? "rotate-180" : ""}`} />
                 </button>
