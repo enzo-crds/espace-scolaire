@@ -11,7 +11,7 @@ import { isDocxFile } from "@/services/docx";
 
 export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   const { id } = useParams();
-  const { data, updateDocument, deleteDocument } = useData();
+  const { data, updateDocument, deleteDocument, addFile } = useData();
   const { confirm, notify } = useUI();
   const navigate = useNavigate();
   const basePath = kind === "course" ? "/cours" : "/fiches";
@@ -51,6 +51,14 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
     setSavedState("idle");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSavedState("saved"), 500);
+  };
+
+  const handleUploadOrReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = e.target.files?.[0];
+    if (!uploadedFile) return;
+    const record = await addFile(uploadedFile, { subjectId: doc.subjectId, category: kind });
+    scheduleSave({ fileId: record.id });
+    notify("Fichier mis à jour");
   };
 
   const handleDelete = async () => {
@@ -98,7 +106,6 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
         </div>
       </div>
 
-      {/* En-tête / Métadonnées */}
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           {subject && (
@@ -125,7 +132,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
             setTitle(e.target.value);
             scheduleSave({ title: e.target.value });
           }}
-          className="mt-3 w-full bg-transparent text-2xl font-bold text-slate-900 outline-none dark:text-white"
+          className="mt-3 w-full bg-transparent text-xl font-semibold text-slate-900 outline-none dark:text-white"
           placeholder="Titre du document"
         />
 
@@ -143,22 +150,27 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
         </div>
       </div>
 
-      {/* Affichage de la pièce jointe (grand format pour les fiches) */}
-      {file && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              <Paperclip className="h-3.5 w-3.5" /> Fichier principal ({file.name})
-            </p>
-          </div>
+      {/* Gestion de la pièce jointe */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <Paperclip className="h-3.5 w-3.5" /> Fichier principal {file ? `(${file.name})` : "(Aucun)"}
+          </p>
+          <label className="cursor-pointer rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
+            {file ? "Remplacer le fichier" + (kind === "fiche" ? " (obligatoire)" : "") : "Ajouter un fichier"}
+            <input type="file" className="hidden" onChange={handleUploadOrReplaceFile} />
+          </label>
+        </div>
+
+        {file && (
           <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-800 ${kind === "fiche" ? "p-6 min-h-[500px]" : "p-4"}`}>
             <FilePreview file={file} large={kind === "fiche"} />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Éditeur de texte / Notes (pour les cours ou fiches avec document texte détecté) */}
-      {kind === "course" || isTextFile ? (
+      {(kind === "course" || isTextFile) && (
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
             <FileTextIcon className="h-3.5 w-3.5" /> Partie Note / Éditeur de texte
@@ -169,7 +181,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
             placeholder={kind === "course" ? "Rédigez votre cours ici…" : "Notes de révision associées au texte…"}
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
