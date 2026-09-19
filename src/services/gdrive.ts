@@ -112,3 +112,18 @@ export async function downloadFromGoogleDrive(): Promise<AppData | null> {
     return null;
   }
 }
+
+export async function getGoogleUserFirstName(): Promise<string | null> {
+  try {
+    const token = gapi?.client?.getToken()?.access_token;
+    if (!token) return null;
+    const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.given_name || data.name?.split(" ")[0] || null;
+  } catch {
+    return null;
+  }
+}
