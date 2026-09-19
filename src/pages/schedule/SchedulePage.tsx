@@ -12,11 +12,24 @@ const DAY_END = 17 * 60 + 20; // 17:20 (1040 min)
 const PX_PER_MIN = 1.2;
 const WORKWEEK_DAYS = DAYS.slice(0, 5); // Lundi -> Vendredi
 
+const SCHOOL_SLOTS: [string, string][] = [
+  ["08:00", "08:55"],
+  ["08:55", "09:50"],
+  ["10:05", "11:00"],
+  ["11:00", "11:55"],
+  ["12:00", "12:55"],
+  ["12:55", "13:25"],
+  ["13:25", "14:20"],
+  ["14:20", "15:15"],
+  ["15:30", "16:25"],
+  ["16:25", "17:20"],
+];
+
 export function SchedulePage() {
   const { data, updateSlot, updateSettings, copyWeekSchedule } = useData();
   const [weekView, setWeekView] = useState<Week>(data.settings.currentWeek);
   const [mobileDay, setMobileDay] = useState(() => Math.min(currentDayIndex(), 4));
-  const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number; defaultStart?: string }>({ open: false });
+  const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number; defaultStart?: string; defaultEnd?: string }>({ open: false });
   const [dragId, setDragId] = useState<string | null>(null);
   
   const [nowMinutes, setNowMinutes] = useState(() => {
@@ -58,12 +71,20 @@ export function SchedulePage() {
 
   const handleDoubleClickGrid = (dayIdx: number, clientY: number, containerTop: number) => {
     const offsetMin = (clientY - containerTop) / PX_PER_MIN;
-    const clickedMin = Math.round((DAY_START + offsetMin) / 5) * 5;
-    const clampedMin = Math.max(DAY_START, Math.min(clickedMin, DAY_END - 60));
+    const clickedMin = DAY_START + offsetMin;
+
+    // Trouve le créneau scolaire le plus proche/correspondant au clic
+    const matched = SCHOOL_SLOTS.find(([start, end]) => {
+      const sMin = timeToMinutes(start);
+      const eMin = timeToMinutes(end);
+      return clickedMin >= sMin - 15 && clickedMin <= eMin + 15;
+    }) || SCHOOL_SLOTS[0];
+
     setModal({
       open: true,
       day: dayIdx,
-      defaultStart: minutesToTime(clampedMin),
+      defaultStart: matched[0],
+      defaultEnd: matched,
     });
   };
 
@@ -276,6 +297,7 @@ export function SchedulePage() {
         defaultDay={modal.day}
         defaultWeek={weekView}
         defaultStart={modal.defaultStart}
+        defaultEnd={modal.defaultEnd}
       />
     </div>
   );
