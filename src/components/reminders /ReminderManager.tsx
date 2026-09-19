@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Plus, Bell, Clock, Trash2 } from "lucide-react";
+import { Plus, Clock, Trash2 } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import { DAYS } from "@/utils/date";
 import type { Reminder } from "@/types";
-import { btnPrimary, btnDanger, inputClass, Field } from "@/components/common/FormField";
+import { btnPrimary, inputClass, Field } from "@/components/common/FormField";
 import { Modal } from "@/components/common/Modal";
 
 export function ReminderManager() {
@@ -15,7 +15,7 @@ export function ReminderManager() {
   const [openModal, setOpenModal] = useState(false);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("07:30");
-  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]); // Lundi -> Vendredi par défaut
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]);
 
   const handleToggle = (id: string) => {
     const updated = reminders.map((r) =>
@@ -69,7 +69,7 @@ export function ReminderManager() {
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">Alarmes & Rappels personnalisés</h3>
           <p className="text-xs text-slate-400">Programmez des sonneries et rappels récurrents.</p>
         </div>
-        <button className={btnPrimary} onClick={() => setOpenModal(true)}>
+        <button type="button" className={btnPrimary} onClick={() => setOpenModal(true)}>
           <Plus className="h-4 w-4" /> Ajouter
         </button>
       </div>
@@ -105,6 +105,7 @@ export function ReminderManager() {
                   className="h-5 w-5 rounded accent-[var(--accent)] cursor-pointer"
                 />
                 <button
+                  type="button"
                   onClick={() => handleDelete(r.id)}
                   className="text-slate-400 hover:text-rose-500 transition"
                 >
@@ -116,15 +117,12 @@ export function ReminderManager() {
         )}
       </div>
 
-      {/* Modal d'ajout */}
       <Modal
         open={openModal}
         onClose={() => setOpenModal(false)}
         title="Nouveau rappel / alarme"
         footer={
-          <>
-            <button className={btnPrimary} onClick={handleAdd}>Enregistrer</button>
-          </>
+          <button type="button" className={btnPrimary} onClick={handleAdd}>Enregistrer</button>
         }
       >
         <div className="space-y-4">
