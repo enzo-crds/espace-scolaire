@@ -8,6 +8,8 @@ import { estimateStorageUsage, humanFileSize } from "@/services/storage";
 import { Field, inputClass, btnPrimary, btnSecondary, btnDanger } from "@/components/common/FormField";
 import type { ThemeMode } from "@/types";
 import { SUBJECT_COLORS } from "@/types";
+import { promptGoogleLogin, logoutGoogle, isGoogleConnected } from "@/services/gdrive";
+import { Cloud, CloudOff, RefreshCw } from "lucide-react";
 
 export function SettingsPage() {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
