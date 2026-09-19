@@ -127,3 +127,62 @@ export async function getGoogleUserFirstName(): Promise<string | null> {
     return null;
   }
 }
+
+export async function uploadFileToDrive(file: File | Blob, name: string): Promise<string | null> {
+  try {
+    const token = gapi?.client?.getToken()?.access_token;
+    if (!token) return null;
+
+    const metadata = {
+      name: `espace-scolaire-${name}`,
+      mimeType: file.type || 'application/octet-stream',
+    };
+
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', file);
+
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.id || null;
+  } catch (e) {
+    console.error('Erreur upload fichier Drive', e);
+    return null;
+  }
+}
+
+export async function downloadFileFromDrive(driveFileId: string): Promise<Blob | null> {
+  try {
+    const token = gapi?.client?.getToken()?.access_token;
+    if (!token) return null;
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) return null;
+    return await res.blob();
+  } catch (e) {
+    console.error('Erreur download fichier Drive', e);
+    return null;
+  }
+}
+
+export async function deleteFileFromDrive(driveFileId: string): Promise<void> {
+  try {
+    const token = gapi?.client?.getToken()?.access_token;
+    if (!token) return;
+    await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (e) {
+    console.error('Erreur delete fichier Drive', e);
+  }
+}
