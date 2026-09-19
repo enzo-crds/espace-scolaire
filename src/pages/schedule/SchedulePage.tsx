@@ -10,11 +10,12 @@ import { btnPrimary, btnSecondary } from "@/components/common/FormField";
 const DAY_START = 7 * 60; // 07:00
 const DAY_END = 19 * 60; // 19:00
 const PX_PER_MIN = 1.2;
+const WORKWEEK_DAYS = DAYS.slice(0, 5); // Lundi -> Vendredi
 
 export function SchedulePage() {
   const { data, updateSlot, updateSettings, copyWeekSchedule } = useData();
   const [weekView, setWeekView] = useState<Week>(data.settings.currentWeek);
-  const [mobileDay, setMobileDay] = useState(currentDayIndex());
+  const [mobileDay, setMobileDay] = useState(() => Math.min(currentDayIndex(), 4));
   const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number }>({ open: false });
   const [dragId, setDragId] = useState<string | null>(null);
   
@@ -129,11 +130,11 @@ export function SchedulePage() {
         />
       ) : (
         <>
-          {/* Vue grille — bureau/tablette */}
+          {/* Vue grille — bureau/tablette (5 jours) */}
           <div className="hidden overflow-x-auto rounded-2xl border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-800 md:block">
-            <div className="grid min-w-[900px] grid-cols-[50px_repeat(7,1fr)] gap-2">
+            <div className="grid min-w-[700px] grid-cols-[50px_repeat(5,1fr)] gap-2">
               <div />
-              {DAYS.map((d) => (
+              {WORKWEEK_DAYS.map((d) => (
                 <div key={d} className="text-center text-xs font-semibold text-slate-500 dark:text-slate-300">{d}</div>
               ))}
 
@@ -145,7 +146,7 @@ export function SchedulePage() {
                 ))}
               </div>
 
-              {DAYS.map((_, dayIdx) => (
+              {WORKWEEK_DAYS.map((_, dayIdx) => (
                 <div
                   key={dayIdx}
                   className="relative rounded-lg bg-slate-50/60 dark:bg-slate-900/30"
@@ -160,7 +161,7 @@ export function SchedulePage() {
                     <div key={m} className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-700/50" style={{ top: (m - DAY_START) * PX_PER_MIN }} />
                   ))}
                   
-                  {/* Ligne indicateur du moment présent sur le jour correspondant (ou sur chaque colonne / ou s'affiche si c'est le jour actuel) */}
+                  {/* Ligne indicateur du moment présent si c'est aujourd'hui (lundi-vendredi) */}
                   {currentDayIndex() === dayIdx && isTimeVisible && (
                     <div
                       className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
@@ -193,10 +194,10 @@ export function SchedulePage() {
             </div>
           </div>
 
-          {/* Vue liste — mobile */}
+          {/* Vue liste — mobile (5 jours) */}
           <div className="md:hidden">
             <div className="mb-3 flex gap-1 overflow-x-auto pb-1">
-              {DAYS.map((d, i) => (
+              {WORKWEEK_DAYS.map((d, i) => (
                 <button
                   key={d}
                   onClick={() => setMobileDay(i)}
