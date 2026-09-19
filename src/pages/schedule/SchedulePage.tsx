@@ -9,7 +9,7 @@ import { btnPrimary, btnSecondary } from "@/components/common/FormField";
 
 const DAY_START = 7 * 60; // 07:00
 const DAY_END = 19 * 60; // 19:00
-const PX_PER_MIN = 1.1;
+const PX_PER_MIN = 1.2;
 
 export function SchedulePage() {
   const { data, updateSlot, updateSettings } = useData();
@@ -50,7 +50,7 @@ export function SchedulePage() {
         draggable={!compact}
         onDragStart={() => setDragId(slot.id)}
         onClick={() => setModal({ open: true, slot })}
-        className="w-full overflow-hidden rounded-lg border-l-4 bg-white px-2 py-1.5 text-left shadow-sm transition hover:shadow-md dark:bg-slate-800"
+        className="flex h-full w-full flex-col justify-between overflow-hidden rounded-lg border-l-4 bg-white px-2 py-1.5 text-left shadow-sm transition hover:shadow-md dark:bg-slate-800"
         style={{ borderColor: color }}
       >
         <p className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">
