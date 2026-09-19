@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, Trash2, Check, Tag as TagIcon, Paperclip } from "lucide-react";
+import { ArrowLeft, Star, Trash2, Check, Tag as TagIcon, Paperclip, FileText as FileTextIcon } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import type { DocKind } from "@/types";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { FilePreview } from "@/components/files/FilePreview";
 import { inputClass } from "@/components/common/FormField";
+import { isDocxFile } from "@/services/docx";
 
 export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   const { id } = useParams();
@@ -42,6 +43,9 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   const subject = data.subjects.find((s) => s.id === doc.subjectId);
   const file = data.files.find((f) => f.id === doc.fileId);
 
+  // Détection si le fichier est un document texte / DOCX
+  const isTextFile = file ? isDocxFile(file) || file.type?.includes("text") || file.name.endsWith(".txt") : false;
+
   const scheduleSave = (patch: Partial<typeof doc>) => {
     updateDocument(doc.id, patch);
     setSavedState("idle");
@@ -64,7 +68,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   };
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(`${basePath}?matiere=${doc.subjectId}`)}
@@ -94,6 +98,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
         </div>
       </div>
 
+      {/* En-tête / Métadonnées */}
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           {subject && (
@@ -120,7 +125,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
             setTitle(e.target.value);
             scheduleSave({ title: e.target.value });
           }}
-          className="mt-3 w-full bg-transparent text-xl font-semibold text-slate-900 outline-none dark:text-white"
+          className="mt-3 w-full bg-transparent text-2xl font-bold text-slate-900 outline-none dark:text-white"
           placeholder="Titre du document"
         />
 
@@ -138,20 +143,33 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
         </div>
       </div>
 
+      {/* Affichage de la pièce jointe (grand format pour les fiches) */}
       {file && (
-        <div className="space-y-2">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-            <Paperclip className="h-3.5 w-3.5" /> Fichier importé
-          </p>
-          <FilePreview file={file} />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <Paperclip className="h-3.5 w-3.5" /> Fichier principal ({file.name})
+            </p>
+          </div>
+          <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-800 ${kind === "fiche" ? "p-6 min-h-[500px]" : "p-4"}`}>
+            <FilePreview file={file} large={kind === "fiche"} />
+          </div>
         </div>
       )}
 
-      <RichTextEditor
-        content={doc.content}
-        onChange={(html) => scheduleSave({ content: html })}
-        placeholder={kind === "course" ? "Rédigez votre cours ici…" : "Rédigez votre fiche de révision ici…"}
-      />
+      {/* Éditeur de texte / Notes (pour les cours ou fiches avec document texte détecté) */}
+      {kind === "course" || isTextFile ? (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <FileTextIcon className="h-3.5 w-3.5" /> Partie Note / Éditeur de texte
+          </div>
+          <RichTextEditor
+            content={doc.content}
+            onChange={(html) => scheduleSave({ content: html })}
+            placeholder={kind === "course" ? "Rédigez votre cours ici…" : "Notes de révision associées au texte…"}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
