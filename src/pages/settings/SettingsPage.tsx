@@ -10,6 +10,12 @@ import type { ThemeMode } from "@/types";
 import { SUBJECT_COLORS } from "@/types";
 import { promptGoogleLogin, logoutGoogle, isGoogleConnected } from "@/services/gdrive";
 import { NotificationToggle } from "@/components/common/NotificationToggle";
+import { ReminderManager } from "@/components/reminders/ReminderManager";
+
+// Dans le JSX de SettingsPage.tsx :
+<section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+  <ReminderManager />
+</section>
 
 export function SettingsPage() {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
