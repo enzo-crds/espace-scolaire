@@ -4,7 +4,7 @@ import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import { DAYS } from "@/utils/date";
 import type { Reminder } from "@/types";
-import { btnPrimary, inputClass, Field } from "@/components/common/FormField";
+import { btnPrimary, btnSecondary, inputClass, Field } from "@/components/common/FormField";
 import { Modal } from "@/components/common/Modal";
 
 export function ReminderManager() {
@@ -15,7 +15,7 @@ export function ReminderManager() {
   const [openModal, setOpenModal] = useState(false);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("07:30");
-  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]); // Lundi -> Vendredi par défaut
 
   const handleToggle = (id: string) => {
     const updated = reminders.map((r) =>
@@ -35,7 +35,10 @@ export function ReminderManager() {
   };
 
   const handleAdd = () => {
-    if (!title.trim()) return notify("Saisissez un titre pour l'alarme", "error");
+    if (!title.trim()) {
+      notify("Saisissez un titre pour l'alarme", "error");
+      return;
+    }
 
     const newReminder: Reminder = {
       id: crypto.randomUUID(),
@@ -48,6 +51,7 @@ export function ReminderManager() {
 
     const updated = [...reminders, newReminder];
     const newAppData = { ...data, reminders: updated };
+
     setData(newAppData);
     saveAppData(newAppData);
 
@@ -69,7 +73,11 @@ export function ReminderManager() {
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">Alarmes & Rappels personnalisés</h3>
           <p className="text-xs text-slate-400">Programmez des sonneries et rappels récurrents.</p>
         </div>
-        <button type="button" className={btnPrimary} onClick={() => setOpenModal(true)}>
+        <button
+          type="button"
+          className={btnPrimary}
+          onClick={() => setOpenModal(true)}
+        >
           <Plus className="h-4 w-4" /> Ajouter
         </button>
       </div>
@@ -86,7 +94,9 @@ export function ReminderManager() {
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-[var(--accent)]" />
                 <div>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.time} — {r.title}</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {r.time} — {r.title}
+                  </p>
                   <p className="text-[11px] text-slate-400">
                     {r.days.length === 5 && r.days.every((d, i) => d === i)
                       ? "En semaine"
@@ -102,12 +112,12 @@ export function ReminderManager() {
                   type="checkbox"
                   checked={r.enabled}
                   onChange={() => handleToggle(r.id)}
-                  className="h-5 w-5 rounded accent-[var(--accent)] cursor-pointer"
+                  className="h-5 w-5 cursor-pointer rounded accent-[var(--accent)]"
                 />
                 <button
                   type="button"
                   onClick={() => handleDelete(r.id)}
-                  className="text-slate-400 hover:text-rose-500 transition"
+                  className="text-slate-400 transition hover:text-rose-500"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -122,7 +132,22 @@ export function ReminderManager() {
         onClose={() => setOpenModal(false)}
         title="Nouveau rappel / alarme"
         footer={
-          <button type="button" className={btnPrimary} onClick={handleAdd}>Enregistrer</button>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className={btnSecondary}
+              onClick={() => setOpenModal(false)}
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              className={btnPrimary}
+              onClick={handleAdd}
+            >
+              Enregistrer
+            </button>
+          </div>
         }
       >
         <div className="space-y-4">
