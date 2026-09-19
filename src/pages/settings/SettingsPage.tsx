@@ -72,12 +72,21 @@ export function SettingsPage() {
         <Field label="Nom / prénom affiché sur l'accueil">
           <input
             className={inputClass}
-            value={data.settings.studentName}
-            onChange={(e) => updateSettings({ studentName: e.target.value })}
+            value={data.settings.name || data.settings.studentName || ""}
+            onChange={(e) => updateSettings({ name: e.target.value, studentName: e.target.value })}
           />
         </Field>
       </section>
 
+      {/* Notifications */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Rappels & Notifications</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Recevez les rappels de vos devoirs et cours directement sur votre écran verrouillé.
+        </p>
+        <NotificationToggle />
+      </section>
+      
       {/* Apparence */}
       <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
         <h2 className="mb-4 font-semibold text-slate-800 dark:text-slate-100">Apparence</h2>
@@ -157,9 +166,7 @@ export function SettingsPage() {
       <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-800">
         <h2 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">Données & sauvegarde</h2>
         <p className="mb-4 text-xs text-slate-400">
-          Vos données sont stockées uniquement dans ce navigateur (IndexedDB). Elles ne sont jamais envoyées sur un
-          serveur. Pensez à exporter régulièrement une sauvegarde, notamment avant de changer de navigateur ou
-          d'ordinateur.
+          Vos données sont enregistrées localement et synchronisées sur votre compte Google Drive. Vous pouvez également exporter ou importer un fichier JSON manuel.
         </p>
 
         {usage && (
