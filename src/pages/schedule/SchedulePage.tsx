@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Plus, MapPin, User } from "lucide-react";
+import { Plus, MapPin, User, Copy } from "lucide-react";
 import { useData } from "@/context/DataContext";
+import { useUI } from "@/context/UIContext";
 import type { ScheduleSlot, Week } from "@/types";
 import { DAYS, timeToMinutes, minutesToTime, currentDayIndex } from "@/utils/date";
 import { SlotModal } from "./SlotModal";
@@ -12,7 +13,8 @@ const DAY_END = 19 * 60; // 19:00
 const PX_PER_MIN = 1.2;
 
 export function SchedulePage() {
-  const { data, updateSlot, updateSettings } = useData();
+  const { data, updateSlot, updateSettings, copyWeekSchedule } = useData();
+  const { confirm, notify } = useUI();
   const [weekView, setWeekView] = useState<Week>(data.settings.currentWeek);
   const [mobileDay, setMobileDay] = useState(currentDayIndex());
   const [modal, setModal] = useState<{ open: boolean; slot?: ScheduleSlot | null; day?: number }>({ open: false });
@@ -42,6 +44,24 @@ export function SchedulePage() {
     setDragId(null);
   };
 
+  const handleCopyWeek = async () => {
+    if (weekView === "BOTH") {
+      notify("Sélectionnez la Semaine A ou B pour copier", "warning");
+      return;
+    }
+    const targetWeek: "A" | "B" = weekView === "A" ? "B" : "A";
+    const ok = await confirm({
+      title: `Copier Semaine ${weekView} vers Semaine ${targetWeek} ?`,
+      message: `Cela va écraser les créneaux spécifiques de la semaine ${targetWeek}.`,
+      confirmLabel: "Copier",
+      danger: true,
+    });
+    if (ok) {
+      copyWeekSchedule(weekView, targetWeek);
+      notify(`Semaine ${weekView} copiée vers la semaine ${targetWeek} !`);
+    }
+  };
+
   const SlotCard = ({ slot, compact }: { slot: ScheduleSlot; compact?: boolean }) => {
     const subject = subjectOf(slot.subjectId);
     const color = slot.color || subject?.color || "#6366f1";
@@ -68,7 +88,12 @@ export function SchedulePage() {
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Emploi du temps</h1>
           <p className="mt-1 text-sm text-slate-400">Glissez-déposez vos créneaux pour les réorganiser (bureau).</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {weekView !== "BOTH" && (
+            <button className={btnSecondary} onClick={handleCopyWeek}>
+              <Copy className="h-3.5 w-3.5" /> Copier vers sem. {weekView === "A" ? "B" : "A"}
+            </button>
+          )}
           <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium dark:bg-slate-800">
             {(["A", "B"] as const).map((w) => (
               <button
