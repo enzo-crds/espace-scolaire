@@ -6,30 +6,52 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
 
-// Écoute les notifications push ou émises depuis l'application
+// Écoute des messages envoyés depuis l'application React
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body } = event.data;
+    self.registration.showNotification(title, {
+      body: body,
+      tag: 'school-notification',
+      renotify: true,
+      vibrate: [200, 100, 200],
+    });
+  }
+});
+
+// Écoute Push Serveur (si serveur configuré plus tard)
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : { title: 'Rappel Scolaire', body: 'Un événement approche !' };
+  let data = { title: 'Rappel Scolaire', body: 'Un événement approche !' };
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      vibrate: [200, 100, 200],
       tag: 'school-notification',
-      renotify: true
+      renotify: true,
+      vibrate: [200, 100, 200],
     })
   );
 });
 
-// Clic sur la notification -> Ouvre l'application
+// Clic sur la notification -> Réouvre/focus l'application PWA
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        return clientList[0].focus();
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
       }
-      return clients.openWindow('/');
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
     })
   );
 });
