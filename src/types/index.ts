@@ -25,15 +25,13 @@ export type DocKind = "course" | "fiche";
 
 export interface DocumentItem {
   id: string;
-  kind: DocKind;
-  subjectId: string;
   title: string;
-  description: string;
-  tags: string[];
-  chapter?: string;
-  content: string; // HTML riche (éditeur)
-  fileId?: string; // référence vers un FileRecord importé
-  favorite: boolean;
+  content: string;
+  type: "COURSE" | "SHEET" | "EXERCISE"; // Cours, Fiche, Exercice...
+  subjectId: string;
+  dueDate?: string;
+  completed?: boolean;
+  fileIds?: string[]; // <-- NOUVEAU : Tableau d'identifiants de fichiers
   createdAt: number;
   updatedAt: number;
 }
