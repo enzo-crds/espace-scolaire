@@ -10,7 +10,7 @@ export function checkAndTriggerReminders(data: AppData) {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-  // Dimanche = 0 -> 6, Lundi = 1 -> 0, Mardi = 2 -> 1, etc.
+  // Alignement des jours : Lundi = 0, Mardi = 1 ... Dimanche = 6
   const jsDay = now.getDay();
   const todayIndex = jsDay === 0 ? 6 : jsDay - 1;
 
@@ -19,7 +19,6 @@ export function checkAndTriggerReminders(data: AppData) {
   data.reminders
     .filter((r) => r.enabled)
     .forEach((r) => {
-      // Si jours vides = tous les jours, sinon vérifie le jour de la semaine
       const isToday = !r.days || r.days.length === 0 || r.days.includes(todayIndex);
 
       if (!r.time) return;
@@ -28,7 +27,10 @@ export function checkAndTriggerReminders(data: AppData) {
 
       const key = `reminder-${r.id}-${todayStr}-${r.time}`;
 
-      if (isToday && currentMinutes === reminderMinutes && !notifiedKeys.has(key)) {
+      // Tolérance : Déclenche si on est à la minute exacte OU si l'heure vient de passer depuis moins de 2 min
+      const isTime = currentMinutes >= reminderMinutes && currentMinutes <= reminderMinutes + 1;
+
+      if (isToday && isTime && !notifiedKeys.has(key)) {
         sendNativeNotification(`⏰ ${r.title}`, `Il est ${r.time} !`);
         notifiedKeys.add(key);
       }
