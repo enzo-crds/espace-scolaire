@@ -27,14 +27,14 @@ export function Dashboard() {
       .filter((s) => s.day === todayIdx && timeToMinutes(s.start) >= nowMinutes)
       .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
-    // Augmenté à 8 cours max (ou enlève le .slice() si tu veux tout voir)
-    if (upcomingToday.length > 0) return upcomingToday.slice(0, 8).map((s) => ({ ...s, dayLabel: "Aujourd'hui" }));
+    // Sans limite de nombre pour aujourd'hui
+    if (upcomingToday.length > 0) return upcomingToday.map((s) => ({ ...s, dayLabel: "Aujourd'hui" }));
 
-    // sinon, cherche le prochain jour avec des cours
+    // Sinon, cherche le prochain jour avec des cours (sans limite non plus)
     for (let offset = 1; offset <= 7; offset++) {
       const dayIdx = (todayIdx + offset) % 7;
       const daySlots = relevant.filter((s) => s.day === dayIdx).sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-      if (daySlots.length > 0) return daySlots.slice(0, 8).map((s) => ({ ...s, dayLabel: DAYS[dayIdx] }));
+      if (daySlots.length > 0) return daySlots.map((s) => ({ ...s, dayLabel: DAYS[dayIdx] }));
     }
     return [];
   }, [schedule, settings.currentWeek]);
@@ -113,7 +113,6 @@ export function Dashboard() {
                 const subject = subjectOf(s.subjectId || "");
                 return (
                   <div key={s.id} className="flex items-center gap-3 rounded-xl border-l-4 bg-slate-50 px-3 py-2.5 dark:bg-slate-900/40" style={{ borderColor: s.color || subject?.color || "#6366f1" }}>
-                    {/* Élargi à w-24 pour afficher start + end proprement */}
                     <div className="w-24 shrink-0 text-xs font-semibold text-slate-500">
                       {s.dayLabel}<br />{s.start} - {s.end}
                     </div>
