@@ -5,7 +5,7 @@ import { useData } from "@/context/DataContext";
 import { isDocxFile, isImageFile, isPdfFile } from "@/services/docx";
 import { humanFileSize } from "@/services/storage";
 
-export function FilePreview({ file }: { file: FileRecord }) {
+export function FilePreview({ file, large = false }: { file: FileRecord, large?: boolean }) {
   const { readFile } = useData();
   const [url, setUrl] = useState<string | null>(null);
 
@@ -27,8 +27,31 @@ export function FilePreview({ file }: { file: FileRecord }) {
   const isPdf = isPdfFile(fakeFile);
   const isDocx = isDocxFile(fakeFile);
 
+  // --- LA FONCTION QUI SAUVE LE TÉLÉCHARGEMENT SUR MOBILE ---
+  const handleDownload = (e: React.MouseEvent) => {
+    e.preventDefault(); // Empêche le bug de rafraîchissement
+    if (!url) return;
+
+    // 1. Création du lien invisible
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+    a.download = file.name;
+
+    // 2. Ajout au DOM (Obligatoire pour Safari/iOS)
+    document.body.appendChild(a);
+    
+    // 3. Clic forcé
+    a.click();
+
+    // 4. Nettoyage
+    setTimeout(() => {
+      document.body.removeChild(a);
+    }, 100);
+  };
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+    <div className={`rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 ${large ? "h-full min-h-[400px]" : ""}`}>
       <div className="mb-2 flex items-center justify-between">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{file.name}</p>
@@ -39,9 +62,14 @@ export function FilePreview({ file }: { file: FileRecord }) {
             <a href={url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" title="Ouvrir">
               <ExternalLink className="h-4 w-4" />
             </a>
-            <a href={url} download={file.name} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700" title="Télécharger">
+            {/* ICI : Remplacement du <a> par un <button> sécurisé */}
+            <button 
+              onClick={handleDownload} 
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" 
+              title="Télécharger"
+            >
               <Download className="h-4 w-4" />
-            </a>
+            </button>
           </div>
         )}
       </div>
