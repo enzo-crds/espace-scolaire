@@ -8,6 +8,7 @@ import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { FilePreview } from "@/components/files/FilePreview";
 import { inputClass } from "@/components/common/FormField";
 import { isDocxFile } from "@/services/docx";
+import { DocumentAttachments } from "@/components/documents/DocumentAttachments";
 
 export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   const { id } = useParams();
@@ -43,7 +44,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   const subject = data.subjects.find((s) => s.id === doc.subjectId);
   const file = data.files.find((f) => f.id === doc.fileId);
 
-  // Détection si le fichier est un document texte / DOCX
+  // Détection si le fichier principal est un document texte / DOCX
   const isTextFile = file ? isDocxFile(file) || file.type?.includes("text") || file.name.endsWith(".txt") : false;
 
   const scheduleSave = (patch: Partial<typeof doc>) => {
@@ -150,7 +151,7 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
         </div>
       </div>
 
-      {/* Gestion de la pièce jointe */}
+      {/* Gestion de la pièce jointe principale */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -168,6 +169,13 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
           </div>
         )}
       </div>
+
+      {/* Liste et ajout de documents / fichiers joints multiples */}
+      <DocumentAttachments
+        documentId={doc.id}
+        fileIds={doc.fileIds}
+        subjectId={doc.subjectId}
+      />
 
       {/* Éditeur de texte / Notes (pour les cours ou fiches avec document texte détecté) */}
       {(kind === "course" || isTextFile) && (
