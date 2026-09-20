@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Paperclip, Trash2, FileText, Download } from "lucide-react";
+import { useRef, useState } from "react";
+import { Paperclip, Trash2, FileText, Download, Loader2 } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import { humanFileSize } from "@/services/storage";
@@ -7,13 +7,17 @@ import { humanFileSize } from "@/services/storage";
 interface Props {
   documentId: string;
   fileIds?: string[];
-  subjectId: string;
+  subjectId?: string;
 }
 
 export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Props) {
-  const { data, addFile, deleteFile, readFile, setData, saveAppData } = useData();
+  // On utilise directement updateDocument au lieu des fonctions compliquées !
+  const { data, addFile, deleteFile, readFile, updateDocument } = useData();
   const { notify } = useUI();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // État pour afficher un chargement pendant l'import
+  const [isUploading, setIsUploading] = useState(false);
 
   const attachedFiles = (data.files || []).filter((f) => fileIds.includes(f.id));
 
@@ -21,53 +25,50 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    setIsUploading(true);
+    notify("Importation en cours...");
+
     try {
-      const newFileIds: string[] = [];
+      // On copie l'existant
+      const newFileIds = [...fileIds];
 
       for (const file of files) {
+        // Sauvegarde le fichier
         const record = await addFile(file, {
-          subjectId,
+          subjectId: subjectId || null,
           category: "ATTACHMENT",
         });
+        // Ajoute son ID à la liste
         newFileIds.push(record.id);
       }
 
-      const updatedDocs = data.documents.map((doc) => {
-        if (doc.id !== documentId) return doc;
-        return {
-          ...doc,
-          fileIds: Array.from(new Set([...(doc.fileIds || []), ...newFileIds])),
-          updatedAt: Date.now(),
-        };
-      });
+      // Met à jour le document avec la liste officielle updateDocument
+      updateDocument(documentId, { fileIds: newFileIds });
 
-      const newAppData = { ...data, documents: updatedDocs };
-      setData(newAppData);
-      await saveAppData(newAppData);
-
-      notify(`${files.length} fichier(s) ajouté(s)`);
-    } catch {
-      notify("Erreur lors de l'ajout des fichiers", "error");
+      notify(`${files.length} fichier(s) joint(s) avec succès !`);
+    } catch (err) {
+      console.error("Erreur lors de l'upload :", err);
+      notify("Impossible d'ajouter les fichiers.", "error");
     } finally {
+      setIsUploading(false);
+      // Réinitialise l'input pour pouvoir importer à nouveau
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleRemove = async (fileId: string) => {
-    const updatedDocs = data.documents.map((doc) => {
-      if (doc.id !== documentId) return doc;
-      return {
-        ...doc,
-        fileIds: (doc.fileIds || []).filter((id) => id !== fileId),
-        updatedAt: Date.now(),
-      };
-    });
-
-    const newAppData = { ...data, documents: updatedDocs };
-    setData(newAppData);
-    await saveAppData(newAppData);
-    await deleteFile(fileId);
-    notify("Fichier retiré");
+    try {
+      // Retire l'ID de la liste du document
+      updateDocument(documentId, { 
+        fileIds: fileIds.filter((id) => id !== fileId) 
+      });
+      // Supprime le fichier
+      await deleteFile(fileId);
+      notify("Fichier retiré");
+    } catch (err) {
+      console.error(err);
+      notify("Erreur lors de la suppression", "error");
+    }
   };
 
   const handleDownload = async (fileId: string, fileName: string) => {
@@ -91,10 +92,15 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
 
         <button
           type="button"
+          disabled={isUploading}
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-xl bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/20 transition"
+          className="flex items-center gap-1.5 rounded-xl bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          + Ajouter des documents
+          {isUploading ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Import...</>
+          ) : (
+            "+ Ajouter des documents"
+          )}
         </button>
 
         <input
