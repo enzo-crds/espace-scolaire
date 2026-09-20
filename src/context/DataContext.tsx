@@ -49,6 +49,8 @@ interface DataContextValue {
   addDocument: (doc: Omit<DocumentItem, "id" | "createdAt" | "updatedAt">) => DocumentItem;
   updateDocument: (id: string, patch: Partial<DocumentItem>) => void;
   deleteDocument: (id: string) => void;
+  attachFileToDocument: (documentId: string, fileId: string) => void;
+  detachFileFromDocument: (documentId: string, fileId: string) => void;
   addGrade: (grade: Omit<Grade, "id" | "createdAt">) => Grade;
   updateGrade: (id: string, patch: Partial<Grade>) => void;
   deleteGrade: (id: string) => void;
@@ -236,14 +238,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const deleteDocument: DataContextValue["deleteDocument"] = (id) => {
     setData((prev) => {
       const doc = prev.documents.find((d) => d.id === id);
-      if (doc?.fileId) {
-        deleteFile(doc.fileId);
+      if (doc?.fileIds && doc.fileIds.length > 0) {
+        doc.fileIds.forEach((fileId) => deleteFile(fileId));
       }
       return {
         ...prev,
         documents: prev.documents.filter((d) => d.id !== id),
       };
     });
+  };
+
+  const attachFileToDocument: DataContextValue["attachFileToDocument"] = (documentId, fileId) => {
+    setData((prev) => ({
+      ...prev,
+      documents: prev.documents.map((doc) => {
+        if (doc.id !== documentId) return doc;
+        const currentFiles = doc.fileIds || [];
+        if (currentFiles.includes(fileId)) return doc;
+        return {
+          ...doc,
+          fileIds: [...currentFiles, fileId],
+          updatedAt: Date.now(),
+        };
+      }),
+    }));
+  };
+
+  const detachFileFromDocument: DataContextValue["detachFileFromDocument"] = (documentId, fileId) => {
+    setData((prev) => ({
+      ...prev,
+      documents: prev.documents.map((doc) => {
+        if (doc.id !== documentId) return doc;
+        return {
+          ...doc,
+          fileIds: (doc.fileIds || []).filter((id) => id !== fileId),
+          updatedAt: Date.now(),
+        };
+      }),
+    }));
   };
 
   const addGrade: DataContextValue["addGrade"] = (grade) => {
@@ -373,6 +405,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addDocument,
         updateDocument,
         deleteDocument,
+        attachFileToDocument,
+        detachFileFromDocument,
         addGrade,
         updateGrade,
         deleteGrade,
