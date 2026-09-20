@@ -330,12 +330,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addFile: DataContextValue["addFile"] = async (file, meta) => {
     const id = generateId();
-    await storeFileBlob(id, file);
+    // 1. Sauvegarde locale (marche toujours)
+    await storeFileBlob(id, file); 
+
     let driveFileId: string | undefined;
+    
+    // 2. Tentative d'envoi vers Google Drive (sécurisée)
     if (isGoogleConnected()) {
-      const uploadedId = await uploadFileToDrive(file, file.name);
-      if (uploadedId) driveFileId = uploadedId;
+      try {
+        const uploadedId = await uploadFileToDrive(file, file.name);
+        if (uploadedId) driveFileId = uploadedId;
+      } catch (error) {
+        console.error("Erreur silencieuse Google Drive ignorée :", error);
+        // On ne fait rien : on laisse l'application continuer localement !
+      }
     }
+
     const record: FileRecord = {
       id,
       name: file.name,
@@ -346,6 +356,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       category: meta.category,
       driveFileId,
     } as FileRecord;
+
     setData((prev) => ({ ...prev, files: [...prev.files, record] }));
     return record;
   };
