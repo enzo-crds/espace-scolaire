@@ -32,7 +32,6 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
         newFileIds.push(record.id);
       }
 
-      // Met à jour le document avec la nouvelle liste de fichiers
       const updatedDocs = data.documents.map((doc) => {
         if (doc.id !== documentId) return doc;
         return {
@@ -55,7 +54,6 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
   };
 
   const handleRemove = async (fileId: string) => {
-    // Retire le fichier de la liste du document
     const updatedDocs = data.documents.map((doc) => {
       if (doc.id !== documentId) return doc;
       return {
@@ -102,7 +100,7 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
         <input
           ref={fileInputRef}
           type="file"
-          multiple // <-- Permet de sélectionner plusieurs fichiers à la fois
+          multiple
           className="hidden"
           onChange={handleUpload}
         />
