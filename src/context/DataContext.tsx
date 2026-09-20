@@ -114,17 +114,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  // Vérification automatique des alarmes toutes les 10 secondes (évite les ratés de minute)
+  // Vérification automatique des alarmes & au retour sur l'app
   useEffect(() => {
     if (loading) return;
 
+    // 1. Vérification immédiate
     checkAndTriggerReminders(dataRef.current);
 
+    // 2. Vérification régulière (toutes les 5 secondes)
     const reminderInterval = setInterval(() => {
       checkAndTriggerReminders(dataRef.current);
-    }, 10000);
+    }, 5000);
 
-    return () => clearInterval(reminderInterval);
+    // 3. Déclenchement au déverrouillage / retour au premier plan
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkAndTriggerReminders(dataRef.current);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(reminderInterval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [loading]);
 
   // Synchronisation toutes les 30s
