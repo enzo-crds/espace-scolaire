@@ -55,11 +55,23 @@ export function DocumentEditorPage({ kind }: { kind: DocKind }) {
   };
 
   const handleUploadOrReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = e.target.files?.[0];
-    if (!uploadedFile) return;
-    const record = await addFile(uploadedFile, { subjectId: doc.subjectId, category: kind });
-    scheduleSave({ fileId: record.id });
-    notify("Fichier mis à jour");
+    try {
+      const uploadedFile = e.target.files?.[0];
+      if (!uploadedFile) return;
+
+      notify("Importation en cours..."); // Optionnel : indique que ça charge
+
+      const record = await addFile(uploadedFile, { subjectId: doc.subjectId, category: kind });
+      scheduleSave({ fileId: record.id });
+      
+      notify("Fichier principal mis à jour !");
+    } catch (error) {
+      console.error("Erreur lors de l'import :", error);
+      notify("Impossible d'importer ce fichier.", "error");
+    } finally {
+      // TRÈS IMPORTANT : Réinitialise l'input pour pouvoir importer le même fichier plus tard si besoin
+      e.target.value = "";
+    }
   };
 
   const handleDelete = async () => {
