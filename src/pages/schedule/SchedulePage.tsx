@@ -73,7 +73,6 @@ export function SchedulePage() {
     const offsetMin = (clientY - containerTop) / PX_PER_MIN;
     const clickedMin = DAY_START + offsetMin;
 
-    // Trouve le créneau scolaire le plus proche/correspondant au clic
     const matched = SCHOOL_SLOTS.find(([start, end]) => {
       const sMin = timeToMinutes(start);
       const eMin = timeToMinutes(end);
@@ -202,7 +201,8 @@ export function SchedulePage() {
                     <div key={m} className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-700/50" style={{ top: (m - DAY_START) * PX_PER_MIN }} />
                   ))}
                   
-                  {currentDayIndex() === dayIdx && isTimeVisible && (
+                  {/* Ligne rouge de l'heure actuelle affichée sur TOUS les jours */}
+                  {isTimeVisible && (
                     <div
                       className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
                       style={{ top: nowTop }}
