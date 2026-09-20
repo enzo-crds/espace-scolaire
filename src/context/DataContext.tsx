@@ -14,7 +14,6 @@ import type {
   ScheduleSlot,
   Settings,
   Subject,
-  Reminder,
 } from "@/types";
 import {
   EMPTY_DATA,
@@ -76,6 +75,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstLoad = useRef(true);
 
+  // Utilisation d'un ref pour que l'intervalle accède toujours aux données fraîches sans recréer le timer
+  const dataRef = useRef<AppData>(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   useEffect(() => {
     async function init() {
       let localData = await loadAppData();
@@ -109,18 +114,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  // Vérification automatique des alarmes & rappels
+  // Vérification automatique des alarmes toutes les 10 secondes (évite les ratés de minute)
   useEffect(() => {
     if (loading) return;
 
-    checkAndTriggerReminders(data);
+    checkAndTriggerReminders(dataRef.current);
 
     const reminderInterval = setInterval(() => {
-      checkAndTriggerReminders(data);
-    }, 60000);
+      checkAndTriggerReminders(dataRef.current);
+    }, 10000);
 
     return () => clearInterval(reminderInterval);
-  }, [data, loading]);
+  }, [loading]);
 
   // Synchronisation toutes les 30s
   useEffect(() => {
@@ -148,7 +153,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return mergedData;
       });
     } else {
-      await uploadToGoogleDrive(data);
+      await uploadToGoogleDrive(dataRef.current);
     }
     setIsDriveSyncing(false);
   };
