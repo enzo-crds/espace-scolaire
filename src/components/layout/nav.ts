@@ -3,10 +3,10 @@ import { Home, BookOpen, NotebookText, BarChart3, Calculator, CalendarDays, Sett
 export const NAV_ITEMS = [
   { to: "/", label: "Accueil", icon: Home, end: true },
   { to: "/cours", label: "Cours", icon: BookOpen },
+  { to: "/exercices", label: "Exercices", icon: Dumbbell },
   { to: "/fiches", label: "Fiches", icon: NotebookText },
   { to: "/notes", label: "Notes", icon: BarChart3 },
   { to: "/calculateur", label: "Calculateur", icon: Calculator },
   { to: "/emploi-du-temps", label: "Emploi du temps", icon: CalendarDays },
   { to: "/parametres", label: "Paramètres", icon: Settings },
-  { to: "/exercices", label: "Exercices", icon: Dumbbell },
 ];
