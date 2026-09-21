@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Paperclip, Trash2, FileText, Download, Loader2 } from "lucide-react";
+import { Paperclip, Trash2, FileText, Download, Loader2, UploadCloud } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import { humanFileSize } from "@/services/storage";
@@ -11,58 +11,73 @@ interface Props {
 }
 
 export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Props) {
-  // On utilise directement updateDocument au lieu des fonctions compliquées !
   const { data, addFile, deleteFile, readFile, updateDocument } = useData();
   const { notify } = useUI();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // État pour afficher un chargement pendant l'import
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const attachedFiles = (data.files || []).filter((f) => fileIds.includes(f.id));
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const processFiles = async (files: File[]) => {
     if (files.length === 0) return;
-
     setIsUploading(true);
     notify("Importation en cours...");
 
     try {
-      // On copie l'existant
       const newFileIds = [...fileIds];
 
       for (const file of files) {
-        // Sauvegarde le fichier
         const record = await addFile(file, {
           subjectId: subjectId || null,
           category: "ATTACHMENT",
         });
-        // Ajoute son ID à la liste
         newFileIds.push(record.id);
       }
 
-      // Met à jour le document avec la liste officielle updateDocument
       updateDocument(documentId, { fileIds: newFileIds });
-
       notify(`${files.length} fichier(s) joint(s) avec succès !`);
     } catch (err) {
       console.error("Erreur lors de l'upload :", err);
       notify("Impossible d'ajouter les fichiers.", "error");
     } finally {
       setIsUploading(false);
-      // Réinitialise l'input pour pouvoir importer à nouveau
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    await processFiles(files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files || []);
+    await processFiles(files);
+  };
+
   const handleRemove = async (fileId: string) => {
     try {
-      // Retire l'ID de la liste du document
       updateDocument(documentId, { 
         fileIds: fileIds.filter((id) => id !== fileId) 
       });
-      // Supprime le fichier
       await deleteFile(fileId);
       notify("Fichier retiré");
     } catch (err) {
@@ -79,12 +94,25 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
     const a = document.createElement("a");
     a.href = url;
     a.download = fileName;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   };
 
   return (
-    <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+    <div 
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`mt-6 rounded-2xl border transition-all p-4 ${
+        isDragging 
+          ? "border-dashed border-[var(--accent)] bg-[var(--accent)]/5 dark:bg-[var(--accent)]/15 scale-[1.01]" 
+          : "border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40"
+      }`}
+    >
       <div className="mb-3 flex items-center justify-between">
         <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
           <Paperclip className="h-4 w-4 text-[var(--accent)]" /> Fichiers joints ({attachedFiles.length})
@@ -112,8 +140,15 @@ export function DocumentAttachments({ documentId, fileIds = [], subjectId }: Pro
         />
       </div>
 
-      {attachedFiles.length === 0 ? (
-        <p className="text-xs text-slate-400 italic">Aucun document joint à ce cours / fiche.</p>
+      {isDragging && (
+        <div className="my-3 flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--accent)]/50 py-6 text-center text-xs text-[var(--accent)]">
+          <UploadCloud className="mb-1 h-6 w-6 animate-bounce" />
+          <p className="font-semibold">Relâchez pour joindre les fichiers !</p>
+        </div>
+      )}
+
+      {attachedFiles.length === 0 && !isDragging ? (
+        <p className="text-xs text-slate-400 italic">Aucun document joint à ce cours / fiche (glissez-déposez des fichiers ici).</p>
       ) : (
         <div className="space-y-2">
           {attachedFiles.map((f) => (
