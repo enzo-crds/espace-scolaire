@@ -57,3 +57,7 @@ export default function App() {
     </ThemeProvider>
   );
 }
+
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission();
+}
