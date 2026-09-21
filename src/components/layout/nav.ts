@@ -8,4 +8,5 @@ export const NAV_ITEMS = [
   { to: "/calculateur", label: "Calculateur", icon: Calculator },
   { to: "/emploi-du-temps", label: "Emploi du temps", icon: CalendarDays },
   { to: "/parametres", label: "Paramètres", icon: Settings },
+  { to: "/exercices", label: "Exercices", icon: Dumbbell },
 ];
