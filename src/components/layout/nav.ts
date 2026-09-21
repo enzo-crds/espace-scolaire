@@ -1,4 +1,4 @@
-import { Home, BookOpen, NotebookText, BarChart3, Calculator, CalendarDays, Settings } from "lucide-react";
+import { Home, BookOpen, NotebookText, BarChart3, Calculator, CalendarDays, Settings, Dumbbell } from "lucide-react";
 
 export const NAV_ITEMS = [
   { to: "/", label: "Accueil", icon: Home, end: true },
