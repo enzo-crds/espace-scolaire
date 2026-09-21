@@ -3,6 +3,7 @@ import { Search, Sun, Moon, Check } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
 import { SearchModal } from "./SearchModal";
+import { SyncStatusButton } from "@/components/common/SyncStatusButton";
 
 export function Topbar() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -40,6 +41,7 @@ export function Topbar() {
               <Check className="h-3.5 w-3.5 text-emerald-500" /> Sauvegardé
             </span>
           )}
+          <SyncStatusButton />
           <button
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
