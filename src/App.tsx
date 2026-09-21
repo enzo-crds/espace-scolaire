@@ -37,6 +37,8 @@ function AppRoutes() {
         <Route path="/calculateur" element={<CalculatorPage />} />
         <Route path="/emploi-du-temps" element={<SchedulePage />} />
         <Route path="/parametres" element={<SettingsPage />} />
+        <Route path="/exercices" element={<DocumentsPage kind="exercise" />} />
+        <Route path="/exercices/:id" element={<DocumentEditorPage kind="exercise" />} />
       </Route>
     </Routes>
   );
