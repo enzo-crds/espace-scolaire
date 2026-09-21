@@ -18,6 +18,9 @@ export function initGoogleIdentity(onTokenReceived?: (token: string) => void) {
         accessToken = resp.access_token;
         localStorage.setItem("gdrive_token", accessToken!);
         if (onTokenReceived) onTokenReceived(accessToken!);
+      } else if (resp.error) {
+        // En cas d'erreur silencieuse, on nettoie si besoin ou on log
+        console.warn("Auth response error/cancel:", resp.error);
       }
     },
   });
@@ -32,13 +35,39 @@ export function promptGoogleLogin() {
   }
 }
 
+/**
+ * Tente un renouvellement silencieux du token (prompt: '')
+ */
+export async function silentRefreshGoogleToken(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !(window as any).google) {
+      return resolve(false);
+    }
+    const tempClient = (window as any).google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: (resp: any) => {
+        if (resp.access_token) {
+          accessToken = resp.access_token;
+          localStorage.setItem("gdrive_token", accessToken!);
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      },
+    });
+    // prompt: '' tente le refresh sans interaction utilisateur si la session Google est active
+    tempClient.requestAccessToken({ prompt: "" });
+  });
+}
+
 export function logoutGoogle() {
   accessToken = null;
   localStorage.removeItem("gdrive_token");
 }
 
 export function isGoogleConnected(): boolean {
-  return !!accessToken;
+  return !!accessToken || (typeof window !== "undefined" && !!localStorage.getItem("gdrive_token"));
 }
 
 function getValidToken(): string | null {
@@ -53,15 +82,23 @@ function getValidToken(): string | null {
   return null;
 }
 
-// Recherche le fichier dans Google Drive
-async function findSyncFileId(token: string): Promise<string | null> {
+// Recherche le fichier dans Google Drive avec gestion propre du 401
+async function findSyncFileId(token: string, allowRefresh = true): Promise<string | null> {
   try {
     const query = encodeURIComponent(`name = '${FILENAME}' and trashed = false`);
     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&spaces=drive`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    
     if (res.status === 401) {
-      logoutGoogle(); // Token expiré
+      localStorage.removeItem("gdrive_token");
+      accessToken = null;
+      if (allowresRefreshOrRetry(allowRefresh)) {
+        const refreshed = await silentRefreshGoogleToken();
+        if (refreshed && accessToken) {
+          return findSyncFileId(accessToken, false);
+        }
+      }
       return null;
     }
     if (!res.ok) return null;
@@ -72,18 +109,27 @@ async function findSyncFileId(token: string): Promise<string | null> {
   }
 }
 
+function allowresRefreshOrRetry(val: boolean): boolean {
+  return val;
+}
+
 export async function uploadToGoogleDrive(data: AppData): Promise<boolean> {
   const token = getValidToken();
   if (!token) return false;
   try {
     const fileId = await findSyncFileId(token);
+    if (!fileId && !getValidToken()) return false;
+    const activeToken = getValidToken();
+    if (!activeToken) return false;
+
+    const actualFileId = await findSyncFileId(activeToken);
     const content = JSON.stringify(data, null, 2);
 
-    if (fileId) {
-      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    if (actualFileId) {
+      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${actualFileId}?uploadType=media`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${activeToken}`,
           "Content-Type": "application/json",
         },
         body: content,
@@ -100,7 +146,7 @@ export async function uploadToGoogleDrive(data: AppData): Promise<boolean> {
 
       const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${activeToken}` },
         body: form,
       });
       return res.ok;
@@ -118,8 +164,11 @@ export async function downloadFromGoogleDrive(): Promise<AppData | null> {
     const fileId = await findSyncFileId(token);
     if (!fileId) return null;
 
+    const activeToken = getValidToken();
+    if (!activeToken) return null;
+
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${activeToken}` },
     });
     if (!res.ok) return null;
     return await res.json();
