@@ -16,6 +16,16 @@ interface DocumentsPageProps {
 const LABELS: Record<DocKind, { title: string; singular: string; empty: string; newBtn: string }> = {
   course: { title: "Cours", singular: "cours", empty: "Aucun cours pour le moment.", newBtn: "Nouveau cours" },
   fiche: { title: "Fiches de révision", singular: "fiche", empty: "Aucune fiche de révision pour le moment.", newBtn: "Nouvelle fiche" },
+  exercise: { title: "Exercices", singular: "exercice", empty: "Aucun exercice pour le moment.", newBtn: "Nouvel exercice" },
+};
+
+const getBasePath = (kind: DocKind) => {
+  switch (kind) {
+    case "course": return "cours";
+    case "exercise": return "exercices";
+    case "fiche":
+    default: return "fiches";
+  }
 };
 
 export function DocumentsPage({ kind }: DocumentsPageProps) {
@@ -40,7 +50,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const label = LABELS[kind];
+  const label = LABELS[kind] || LABELS.fiche;
   const docs = data.documents.filter((d) => d.kind === kind);
 
   const subjectsWithCount = data.subjects.map((s) => ({
@@ -74,9 +84,11 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
     });
     if (ok) {
       deleteDocument(id);
-      notify(`${label.singular === "cours" ? "Cours" : "Fiche"} supprimé(e)`);
+      notify(`${label.singular.charAt(0).toUpperCase() + label.singular.slice(1)} supprimé(e)`);
     }
   };
+
+  const basePath = getBasePath(kind);
 
   // --- Vue "liste des matières" ---
   if (!subjectId) {
@@ -150,7 +162,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
           onClose={() => setNewDocOpen(false)}
           kind={kind}
           defaultSubjectId={subjectId}
-          onCreated={(id) => navigate(`/${kind === "course" ? "cours" : "fiches"}/${id}`)}
+          onCreated={(id) => navigate(`/${basePath}/${id}`)}
         />
       </div>
     );
@@ -208,7 +220,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
             <div
               key={doc.id}
               className="card-hover group flex cursor-pointer flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800"
-              onClick={() => navigate(`/${kind === "course" ? "cours" : "fiches"}/${doc.id}`)}
+              onClick={() => navigate(`/${basePath}/${doc.id}`)}
             >
               <div className="flex items-start justify-between">
                 <h3 className="line-clamp-2 pr-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{doc.title}</h3>
@@ -256,7 +268,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
         onClose={() => setNewDocOpen(false)}
         kind={kind}
         defaultSubjectId={subjectId}
-        onCreated={(id) => navigate(`/${kind === "course" ? "cours" : "fiches"}/${id}`)}
+        onCreated={(id) => navigate(`/${basePath}/${id}`)}
       />
     </div>
   );
