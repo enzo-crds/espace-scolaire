@@ -13,11 +13,12 @@ interface NewDocumentModalProps {
   onClose: () => void;
   kind: DocKind;
   defaultSubjectId: string | null;
+  defaultTab?: string;
   onCreated: (id: string) => void;
 }
 
-export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCreated }: NewDocumentModalProps) {
-  const { data, addDocument, addFile } = useData();
+export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, defaultTab, onCreated }: NewDocumentModalProps) {
+  const { data, addDocument, addFile } = useData() as any;
   const { notify } = useUI();
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(defaultSubjectId || "");
@@ -79,6 +80,7 @@ export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCrea
     const doc = addDocument({
       kind,
       subjectId,
+      tab: defaultTab || "Cours",
       title: title.trim(),
       description: description.trim(),
       chapter: chapter.trim() || undefined,
@@ -118,7 +120,7 @@ export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCrea
           <Field label="Matière">
             <select className={inputClass} value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
               <option value="" disabled>Choisir…</option>
-              {data.subjects.map((s) => (
+              {data.subjects.map((s: any) => (
                 <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
               ))}
             </select>
@@ -143,7 +145,7 @@ export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCrea
 
         <Field
           label={kind === "fiche" ? "Importer un fichier (obligatoire)" : "Importer un fichier (optionnel)"}
-          hint={kind === "fiche" ? "PDF, DOCX, images, TXT requis." : "Formats acceptés : PDF, DOCX, images, TXT. Vous pourrez éditer le contenu directement après création."}
+          hint={kind === "fiche" ? "PDF, DOCX, images, TXT requis." : "Formats acceptés : PDF, DOCX, images, TXT."}
         >
           {!pendingFile ? (
             <FileDrop onFile={setPendingFile} hint="PDF, DOCX, JPG, PNG, TXT" />
@@ -171,7 +173,7 @@ export function NewDocumentModal({ open, onClose, kind, defaultSubjectId, onCrea
         </Field>
         {convertedHtml && (
           <p className="text-xs text-emerald-600 dark:text-emerald-400">
-            Contenu du DOCX prêt à être importé dans l'éditeur (mise en page simplifiée).
+            Contenu du DOCX prêt à être importé dans l'éditeur.
           </p>
         )}
       </div>
