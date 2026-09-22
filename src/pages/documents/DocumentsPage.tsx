@@ -13,7 +13,7 @@ interface DocumentsPageProps {
   kind: DocKind;
 }
 
-const DEFAULT_TABS = ["Cours", "Exercices", "Évals"];
+const DEFAULT_TABS = ["Cours", "Exercices", "Évals", "Fiches"];
 
 const LABELS: Record<DocKind, { title: string; singular: string; empty: string; newBtn: string }> = {
   course: { title: "Cours", singular: "cours", empty: "Aucun cours pour cet intercalaire.", newBtn: "Nouveau cours" },
