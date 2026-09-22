@@ -16,7 +16,7 @@ interface DocumentsPageProps {
 const DEFAULT_TABS = ["Cours", "Exercices", "Évals"];
 
 const LABELS: Record<DocKind, { title: string; singular: string; empty: string; newBtn: string }> = {
-  course: { title: "Cours", singular: "cours", empty: "Aucun cours pour ce moment/intercalaire.", newBtn: "Nouveau cours" },
+  course: { title: "Cours", singular: "cours", empty: "Aucun cours pour cet intercalaire.", newBtn: "Nouveau cours" },
   fiche: { title: "Fiches de révision", singular: "fiche", empty: "Aucune fiche de révision pour cet intercalaire.", newBtn: "Nouvelle fiche" },
   exercise: { title: "Exercices", singular: "exercice", empty: "Aucun exercice pour cet intercalaire.", newBtn: "Nouvel exercice" },
 };
@@ -28,6 +28,11 @@ const getBasePath = (kind: DocKind) => {
     case "fiche":
     default: return "fiches";
   }
+};
+
+const pluralize = (count: number, singular: string) => {
+  if (count <= 1) return singular;
+  return singular.endsWith("s") ? singular : `${singular}s`;
 };
 
 export function DocumentsPage({ kind }: DocumentsPageProps) {
@@ -124,7 +129,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
     }
     const ok = await confirm({
       title: `Supprimer l'intercalaire « ${tabToDelete} » ?`,
-      message: "Les documents de cet intercalaire ne seront pas supprimés.",
+      message: "Les documents de cet intercalaire não seront pas supprimés.",
       danger: true,
       confirmLabel: "Supprimer l'intercalaire",
     });
@@ -147,7 +152,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{label.title}</h1>
-            <p className="mt-1 text-sm text-slate-400">Organisez vos {label.singular}s par matière.</p>
+            <p className="mt-1 text-sm text-slate-400">Organisez vos {pluralize(2, label.singular)} par matière.</p>
           </div>
           <div className="flex gap-2">
             <button className={btnSecondary} onClick={() => setSubjectModalOpen(true)}>
@@ -197,8 +202,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
                 <div>
                   <p className="font-medium text-slate-800 dark:text-slate-100">{subject.name}</p>
                   <p className="text-xs text-slate-400">
-                    {count} {label.singular}
-                    {count > 1 ? "s" : ""}
+                    {count} {pluralize(count, label.singular)}
                   </p>
                 </div>
               </button>
@@ -236,7 +240,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{selectedSubject?.name}</h1>
             <p className="text-sm text-slate-400">
-              Intercalaire : <strong className="text-slate-700 dark:text-slate-200">{activeTab}</strong> · {filteredDocs.length} {label.singular}(s)
+              Intercalaire : <strong className="text-slate-700 dark:text-slate-200">{activeTab}</strong> · {filteredDocs.length} {pluralize(filteredDocs.length, label.singular)}
             </p>
           </div>
         </div>
