@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Search, ArrowLeft, Star, Trash2, FileText } from "lucide-react";
+import { Plus, Search, ArrowLeft, Star, Trash2, FileText, Layers, FolderPlus, X } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import type { DocKind } from "@/types";
@@ -13,31 +13,47 @@ interface DocumentsPageProps {
   kind: DocKind;
 }
 
+const DEFAULT_TABS = ["Cours", "Exercices", "Évals"];
+
 const LABELS: Record<DocKind, { title: string; singular: string; empty: string; newBtn: string }> = {
-  course: { title: "Cours", singular: "cours", empty: "Aucun cours pour le moment.", newBtn: "Nouveau cours" },
-  fiche: { title: "Fiches de révision", singular: "fiche", empty: "Aucune fiche de révision pour le moment.", newBtn: "Nouvelle fiche" },
-  exercise: { title: "Exercices", singular: "exercice", empty: "Aucun exercice pour le moment.", newBtn: "Nouvel exercice" },
+  course: { title: "Cours & Classeur", singular: "document", empty: "Aucun document pour cet intercalaire.", newBtn: "Nouveau document" },
+  fiche: { title: "Fiches de révision", singular: "fiche", empty: "Aucune fiche pour cet intercalaire.", newBtn: "Nouvelle fiche" },
+  exercise: { title: "Exercices", singular: "exercice", empty: "Aucun exercice pour cet intercalaire.", newBtn: "Nouvel exercice" },
 };
 
 const getBasePath = (kind: DocKind) => {
   switch (kind) {
     case "course": return "cours";
-    case "exercise": return "exercices";
+    case "exercise": return "cours";
     case "fiche":
-    default: return "fiches";
+    default: return "cours";
   }
 };
 
 export function DocumentsPage({ kind }: DocumentsPageProps) {
-  const { data, deleteDocument, updateDocument } = useData();
+  const { data, deleteDocument, updateDocument, updateSubject } = useData() as any;
   const { confirm, notify } = useUI();
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const subjectId = params.get("matiere");
+  
   const [search, setSearch] = useState("");
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("Cours");
+  const [isAddingTab, setIsAddingTab] = useState(false);
+  const [newTabName, setNewTabName] = useState("");
+
+  const selectedSubject = data.subjects.find((s: any) => s.id === subjectId);
+  const subjectTabs: string[] = selectedSubject?.tabs || DEFAULT_TABS;
+
+  // Réinitialise l'onglet actif si on change de matière
+  useEffect(() => {
+    if (subjectId && subjectTabs.length > 0) {
+      setActiveTab((prev) => (subjectTabs.includes(prev) ? prev : subjectTabs[0]));
+    }
+  }, [subjectId]);
 
   useEffect(() => {
     const state = location.state as { openNew?: boolean; openSubject?: boolean } | null;
@@ -50,30 +66,32 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const label = LABELS[kind] || LABELS.fiche;
-  const docs = data.documents.filter((d) => d.kind === kind);
+  const label = LABELS[kind] || LABELS.course;
+  const docs = data.documents.filter((d: any) => d.kind === kind);
 
-  const subjectsWithCount = data.subjects.map((s) => ({
+  const subjectsWithCount = data.subjects.map((s: any) => ({
     subject: s,
-    count: docs.filter((d) => d.subjectId === s.id).length,
+    count: docs.filter((d: any) => d.subjectId === s.id).length,
   }));
 
   const filteredDocs = useMemo(() => {
     let list = docs;
-    if (subjectId) list = list.filter((d) => d.subjectId === subjectId);
+    if (subjectId) {
+      list = list.filter((d: any) => d.subjectId === subjectId);
+      // Filtrer par intercalaire (si le doc n'a pas de champ tab, on le rattache par défaut au 1er onglet ou on filtre strict)
+      list = list.filter((d: any) => (d.tab || subjectTabs[0]) === activeTab);
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
-        (d) =>
+        (d: any) =>
           d.title.toLowerCase().includes(q) ||
-          d.tags.some((t) => t.toLowerCase().includes(q)) ||
-          d.description.toLowerCase().includes(q)
+          d.tags?.some((t: string) => t.toLowerCase().includes(q)) ||
+          d.description?.toLowerCase().includes(q)
       );
     }
-    return [...list].sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [docs, subjectId, search]);
-
-  const selectedSubject = data.subjects.find((s) => s.id === subjectId);
+    return [...list].sort((a: any, b: any) => b.updatedAt - a.updatedAt);
+  }, [docs, subjectId, search, activeTab, subjectTabs]);
 
   const handleDelete = async (id: string, title: string) => {
     const ok = await confirm({
@@ -84,7 +102,41 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
     });
     if (ok) {
       deleteDocument(id);
-      notify(`${label.singular.charAt(0).toUpperCase() + label.singular.slice(1)} supprimé(e)`);
+      notify("Document supprimé");
+    }
+  };
+
+  const handleAddTab = () => {
+    const trimmed = newTabName.trim();
+    if (!trimmed || subjectTabs.includes(trimmed)) return;
+    const updatedTabs = [...subjectTabs, trimmed];
+    if (subjectId && updateSubject) {
+      updateSubject(subjectId, { tabs: updatedTabs });
+    }
+    setActiveTab(trimmed);
+    setNewTabName("");
+    setIsAddingTab(false);
+    notify(`Intercalaire « ${trimmed} » ajouté`);
+  };
+
+  const handleDeleteTab = async (tabToDelete: string) => {
+    if (subjectTabs.length <= 1) {
+      notify("Il faut garder au moins un intercalaire", "warning");
+      return;
+    }
+    const ok = await confirm({
+      title: `Supprimer l'intercalaire « ${tabToDelete} » ?`,
+      message: "Les documents de cet intercalaire ne seront pas supprimés mais risquent de perdre leur association.",
+      danger: true,
+      confirmLabel: "Supprimer l'intercalaire",
+    });
+    if (ok) {
+      const updatedTabs = subjectTabs.filter((t) => t !== tabToDelete);
+      if (subjectId && updateSubject) {
+        updateSubject(subjectId, { tabs: updatedTabs });
+      }
+      setActiveTab(updatedTabs[0]);
+      notify(`Intercalaire « ${tabToDelete} » supprimé`);
     }
   };
 
@@ -96,8 +148,8 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{label.title}</h1>
-            <p className="mt-1 text-sm text-slate-400">Organisez vos {label.singular}s par matière.</p>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Classeur de cours</h1>
+            <p className="mt-1 text-sm text-slate-400">Sélectionnez une matière pour ouvrir son classeur et ses intercalaires.</p>
           </div>
           <div className="flex gap-2">
             <button className={btnSecondary} onClick={() => setSubjectModalOpen(true)}>
@@ -123,7 +175,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
           <EmptyState
             icon={<FileText className="h-6 w-6" />}
             title="Aucune matière créée"
-            description="Créez votre première matière pour commencer à organiser vos contenus."
+            description="Créez votre première matière pour organiser vos intercalaires."
             action={
               <button className={btnPrimary} onClick={() => setSubjectModalOpen(true)}>
                 <Plus className="h-4 w-4" /> Créer une matière
@@ -147,8 +199,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
                 <div>
                   <p className="font-medium text-slate-800 dark:text-slate-100">{subject.name}</p>
                   <p className="text-xs text-slate-400">
-                    {count} {label.singular}
-                    {count > 1 ? "s" : ""}
+                    {count} document{count > 1 ? "s" : ""} · {subject.tabs?.length || DEFAULT_TABS.length} intercalaires
                   </p>
                 </div>
               </button>
@@ -168,7 +219,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
     );
   }
 
-  // --- Vue "documents d'une matière" ---
+  // --- Vue "classeur d'une matière avec intercalaires" ---
   return (
     <div className="space-y-6">
       <button
@@ -185,7 +236,10 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
           </span>
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{selectedSubject?.name}</h1>
-            <p className="text-sm text-slate-400">{filteredDocs.length} {label.singular}(s)</p>
+            <p className="text-sm text-slate-400 flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5 text-[var(--accent)]" />
+              Intercalaire actuel : <strong className="text-slate-700 dark:text-slate-200">{activeTab}</strong> ({filteredDocs.length})
+            </p>
           </div>
         </div>
         <button className={btnPrimary} onClick={() => setNewDocOpen(true)}>
@@ -193,12 +247,86 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
         </button>
       </div>
 
+      {/* Barre de gestion des intercalaires (Pills / Sélecteur + Menu déroulant mobile/desktop) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Sélecteur mobile (menu déroulant) */}
+          <div className="sm:hidden w-full mb-1">
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium dark:border-slate-700 dark:bg-slate-800"
+            >
+              {subjectTabs.map((tab) => (
+                <option key={tab} value={tab}>{tab}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Onglets style classeur (desktop / tablette) */}
+          <div className="hidden sm:flex flex-wrap items-center gap-1">
+            {subjectTabs.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <div key={tab} className="group relative flex items-center">
+                  <button
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-t-xl px-4 py-2 text-xs font-semibold transition ${
+                      isActive
+                        ? "bg-[var(--accent)] text-white shadow-sm"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                  {subjectTabs.length > 1 && (
+                    <button
+                      onClick={() => handleDeleteTab(tab)}
+                      className={`ml-0.5 rounded-r-lg p-1 text-[10px] transition opacity-0 group-hover:opacity-100 ${
+                        isActive ? "text-white/80 hover:bg-white/20" : "text-slate-400 hover:text-rose-500"
+                      }`}
+                      title={`Supprimer ${tab}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Ajout d'intercalaire */}
+          {isAddingTab ? (
+            <div className="flex items-center gap-1 ml-2">
+              <input
+                type="text"
+                value={newTabName}
+                onChange={(e) => setNewTabName(e.target.value)}
+                placeholder="Nom intercalaire…"
+                className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs outline-none dark:border-slate-700 dark:bg-slate-800"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleAddTab()}
+              />
+              <button onClick={handleAddTab} className="rounded-lg bg-emerald-500 p-1 text-white text-xs">✓</button>
+              <button onClick={() => setIsAddingTab(false)} className="rounded-lg bg-slate-200 p-1 text-slate-600 text-xs dark:bg-slate-700 dark:text-slate-300">✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingTab(true)}
+              className="flex items-center gap-1 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400"
+            >
+              <FolderPlus className="h-3.5 w-3.5" /> + Intercalaire
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Rechercher un(e) ${label.singular}, un tag…`}
+          placeholder={`Rechercher dans l'intercalaire « ${activeTab} »…`}
           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[var(--accent)] dark:border-slate-700 dark:bg-slate-800"
         />
       </div>
@@ -207,7 +335,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
           title={label.empty}
-          description={`Créez votre premier(ère) ${label.singular} pour cette matière.`}
+          description={`Aucun document dans l'intercalaire « ${activeTab} » pour cette matière.`}
           action={
             <button className={btnPrimary} onClick={() => setNewDocOpen(true)}>
               <Plus className="h-4 w-4" /> {label.newBtn}
@@ -216,7 +344,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredDocs.map((doc) => (
+          {filteredDocs.map((doc: any) => (
             <div
               key={doc.id}
               className="card-hover group flex cursor-pointer flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-800"
@@ -249,7 +377,10 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
                 <p className="line-clamp-2 text-xs text-slate-400">{doc.description}</p>
               )}
               <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
-                {doc.tags.slice(0, 3).map((t) => (
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)] dark:bg-slate-700">
+                  {doc.tab || subjectTabs[0]}
+                </span>
+                {doc.tags?.slice(0, 2).map((t: string) => (
                   <span key={t} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                     #{t}
                   </span>
@@ -268,6 +399,7 @@ export function DocumentsPage({ kind }: DocumentsPageProps) {
         onClose={() => setNewDocOpen(false)}
         kind={kind}
         defaultSubjectId={subjectId}
+        defaultTab={activeTab}
         onCreated={(id) => navigate(`/${basePath}/${id}`)}
       />
     </div>
