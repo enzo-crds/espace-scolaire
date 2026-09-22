@@ -4,7 +4,7 @@ import { NAV_ITEMS } from "./nav";
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-100 bg-white/80 px-4 py-6 backdrop-blur lg:flex dark:border-slate-800 dark:bg-slate-900/80">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-slate-100 bg-white/80 px-4 py-6 backdrop-blur lg:flex dark:border-slate-800 dark:bg-slate-900/80">
       <div className="mb-8 flex items-center gap-2.5 px-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)] text-white shadow-sm shadow-[var(--accent)]/30">
           <GraduationCap className="h-5 w-5" />
