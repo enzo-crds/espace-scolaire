@@ -26,6 +26,21 @@ export function DropzonePage() {
     }
   };
 
+  const handleDownload = (file: any) => {
+    const src = file.dataUrl || file.url;
+    if (!src) {
+      notify("Lien de téléchargement introuvable pour ce fichier", "error");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    notify(`Téléchargement de « ${file.name} » lancé`);
+  };
+
   return (
     <div className="space-y-6 pb-10">
       <div>
@@ -70,14 +85,13 @@ export function DropzonePage() {
                   >
                     <Eye className="h-4 w-4" />
                   </button>
-                  <a
-                    href={file.dataUrl || file.url}
-                    download={file.name}
+                  <button
+                    onClick={() => handleDownload(file)}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-500 dark:hover:bg-slate-700"
                     title="Télécharger"
                   >
                     <Download className="h-4 w-4" />
-                  </a>
+                  </button>
                   <button
                     onClick={() => handleDelete(file.id, file.name)}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-slate-700"
