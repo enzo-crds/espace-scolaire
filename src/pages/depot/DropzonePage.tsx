@@ -15,8 +15,15 @@ export function DropzonePage() {
 
   const handleFileUpload = async (file: File) => {
     if (!addFile) return;
-    await addFile(file, { category: "depot" });
-    notify(`Fichier « ${file.name} » ajouté au dépôt !`);
+    
+    // Conversion en DataURL pour assurer la persistance et le téléchargement/aperçu
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      await addFile(file, { category: "depot", dataUrl });
+      notify(`Fichier « ${file.name} » ajouté au dépôt !`);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -27,12 +34,9 @@ export function DropzonePage() {
   };
 
   const handleDownload = (file: any) => {
-    let src = file.dataUrl || file.url || file.content;
-    if (!src && file.file instanceof File) {
-      src = URL.createObjectURL(file.file);
-    }
+    const src = file.dataUrl || file.url;
     if (!src) {
-      notify("Lien de téléchargement introuvable pour ce fichier", "error");
+      notify("Données du fichier introuvables. Supprimez-le et réimportez-le.", "error");
       return;
     }
     const link = document.createElement("a");
@@ -41,7 +45,7 @@ export function DropzonePage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    notify(`Téléchargement de « ${file.name || "fichier"} » lancé`);
+    notify(`Téléchargement de « ${file.name} » lancé`);
   };
 
   return (
