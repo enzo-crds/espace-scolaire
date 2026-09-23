@@ -27,18 +27,21 @@ export function DropzonePage() {
   };
 
   const handleDownload = (file: any) => {
-    const src = file.dataUrl || file.url;
+    let src = file.dataUrl || file.url || file.content;
+    if (!src && file.file instanceof File) {
+      src = URL.createObjectURL(file.file);
+    }
     if (!src) {
       notify("Lien de téléchargement introuvable pour ce fichier", "error");
       return;
     }
     const link = document.createElement("a");
     link.href = src;
-    link.download = file.name;
+    link.download = file.name || "fichier";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    notify(`Téléchargement de « ${file.name} » lancé`);
+    notify(`Téléchargement de « ${file.name || "fichier"} » lancé`);
   };
 
   return (
