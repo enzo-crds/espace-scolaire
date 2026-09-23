@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { Modal } from "@/components/common/Modal";
-import { Download } from "lucide-react";
+import { Download, AlertCircle } from "lucide-react";
 
 interface FilePreviewProps {
   open: boolean;
@@ -13,6 +14,12 @@ interface FilePreviewProps {
 }
 
 export function FilePreviewModal({ open, onClose, file }: FilePreviewProps) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [file]);
+
   if (!file) return null;
 
   const src = file.dataUrl || file.url || "";
@@ -34,7 +41,22 @@ export function FilePreviewModal({ open, onClose, file }: FilePreviewProps) {
 
         <div className="flex max-h-[72vh] items-center justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900">
           {isImage ? (
-            <img src={src} alt={file.name} className="max-h-[65vh] object-contain rounded-lg" />
+            imgError ? (
+              <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-slate-500">
+                <AlertCircle className="h-8 w-8 text-rose-500" />
+                <p>Aperçu indisponible (URL de l'image invalide ou expirée après rechargement).</p>
+                <a href={src} download={file.name} className="text-xs text-[var(--accent)] underline">
+                  Télécharger le fichier pour le voir
+                </a>
+              </div>
+            ) : (
+              <img
+                src={src}
+                alt={file.name}
+                className="max-h-[65vh] object-contain rounded-lg"
+                onError={() => setImgError(true)}
+              />
+            )
           ) : isPdf ? (
             <iframe src={src} title={file.name} className="h-[65vh] w-full rounded-lg border-0" />
           ) : (
