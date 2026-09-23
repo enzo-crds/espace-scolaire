@@ -10,6 +10,8 @@ import { NotesPage } from "@/pages/notes/NotesPage";
 import { CalculatorPage } from "@/pages/calculator/CalculatorPage";
 import { SchedulePage } from "@/pages/schedule/SchedulePage";
 import { SettingsPage } from "@/pages/settings/SettingsPage";
+import { TasksPage } from "@/pages/tasks/TasksPage"; // 👈 Ajouté
+import { DropzonePage } from "@/pages/depot/DropzonePage"; // 👈 Ajouté
 
 function AppRoutes() {
   const { loading } = useData();
@@ -33,12 +35,14 @@ function AppRoutes() {
         <Route path="/cours/:id" element={<DocumentEditorPage kind="course" />} />
         <Route path="/fiches" element={<DocumentsPage kind="fiche" />} />
         <Route path="/fiches/:id" element={<DocumentEditorPage kind="fiche" />} />
+        <Route path="/exercices" element={<DocumentsPage kind="exercise" />} />
+        <Route path="/exercices/:id" element={<DocumentEditorPage kind="exercise" />} />
+        <Route path="/devoirs" element={<TasksPage />} />
+        <Route path="/depot" element={<DropzonePage />} />
         <Route path="/notes" element={<NotesPage />} />
         <Route path="/calculateur" element={<CalculatorPage />} />
         <Route path="/emploi-du-temps" element={<SchedulePage />} />
         <Route path="/parametres" element={<SettingsPage />} />
-        <Route path="/exercices" element={<DocumentsPage kind="exercise" />} />
-        <Route path="/exercices/:id" element={<DocumentEditorPage kind="exercise" />} />
       </Route>
     </Routes>
   );
