@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, CheckCircle2, Circle, Trash2, Calendar, FileText, AlertCircle } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Trash2, Calendar, FileText } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import type { TaskKind, SchoolTask } from "@/types";
@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Modal } from "@/components/common/Modal";
 import { Field, inputClass, btnPrimary, btnSecondary } from "@/components/common/FormField";
 import { FileDrop } from "@/components/files/FileDrop";
+import { FilePreviewModal } from "@/components/files/FilePreviewModal";
 
 export function TasksPage() {
   const { data, addFile } = useData() as any;
@@ -15,12 +16,17 @@ export function TasksPage() {
   const [filter, setFilter] = useState<"all" | "devoir" | "eval">("all");
   const [openModal, setOpenModal] = useState(false);
 
+  // 1. État pour la prévisualisation
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
+
   // Form state
   const [kind, setKind] = useState<TaskKind>("devoir");
   const [subjectId, setSubjectId] = useState("");
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const setpendingFileOrSet = (f: File) => setPendingFile(f);
 
   const handleCreate = async () => {
     if (!title.trim() || !subjectId || !dueDate) {
@@ -137,10 +143,18 @@ export function TasksPage() {
                     <span className="flex items-center gap-1 text-xs font-medium text-slate-500">
                       <Calendar className="h-3.5 w-3.5" /> {new Date(task.dueDate).toLocaleDateString("fr-FR")}
                     </span>
+                    {/* 2. Rendu cliquable du fichier joint */}
                     {task.fileId && (
-                      <span className="text-[10px] text-[var(--accent)] flex items-center justify-end gap-1 mt-0.5">
-                        <FileText className="h-3 w-3" /> Fichier joint
-                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const foundFile = data.files?.find((f: any) => f.id === task.fileId);
+                          if (foundFile) setPreviewFile(foundFile);
+                        }}
+                        className="text-[10px] text-[var(--accent)] hover:underline flex items-center justify-end gap-1 mt-0.5 ml-auto"
+                      >
+                        <FileText className="h-3 w-3" /> Voir le fichier
+                      </button>
                     )}
                   </div>
                   <button onClick={() => deletetask(task.id)} className="text-slate-300 hover:text-rose-500">
@@ -209,6 +223,13 @@ export function TasksPage() {
           </div>
         </div>
       </Modal>
+
+      {/* 3. Modale d'aperçu en bas du JSX de la page */}
+      <FilePreviewModal
+        open={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        file={previewFile}
+      />
     </div>
   );
 }
