@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderDown, Trash2, Eye, Download, UploadCloud } from "lucide-react";
+import { FolderDown, Trash2, Eye, Download } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useUI } from "@/context/UIContext";
 import { FileDrop } from "@/components/files/FileDrop";
@@ -11,8 +11,7 @@ export function DropzonePage() {
   const { notify } = useUI();
   const [previewFile, setPreviewFile] = useState<any | null>(null);
 
-  // Filtrer les fichiers stockés dans la catégorie "depot" (ou tous si tu préfères)
-  const depotFiles = data.files?.filter((f: any) => f.category === "depot" || !f.category) || [];
+  const depotFiles = data?.files?.filter((f: any) => f.category === "depot" || !f.category) || [];
 
   const handleFileUpload = async (file: File) => {
     if (!addFile) return;
@@ -34,12 +33,10 @@ export function DropzonePage() {
         <p className="mt-1 text-sm text-slate-400">Dépose tes fichiers ici pour les stocker, les prévisualiser ou les récupérer.</p>
       </div>
 
-      {/* Zone de drop principale */}
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <FileDrop onFile={handleFileUpload} hint="Glisse un fichier ici ou clique pour l'importer" />
       </div>
 
-      {/* Liste des fichiers déposés */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
           Fichiers stockés ({depotFiles.length})
@@ -95,7 +92,6 @@ export function DropzonePage() {
         )}
       </div>
 
-      {/* Modale d'aperçu */}
       <FilePreviewModal
         open={!!previewFile}
         onClose={() => setPreviewFile(null)}
