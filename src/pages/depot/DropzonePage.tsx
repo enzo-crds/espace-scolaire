@@ -15,13 +15,8 @@ export function DropzonePage() {
 
   const handleFileUpload = async (file: File) => {
     if (!addFile) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      await addFile(file, { category: "depot", dataUrl });
-      notify(`Fichier « ${file.name} » ajouté au dépôt !`);
-    };
-    reader.readAsDataURL(file);
+    await addFile(file, { category: "depot" });
+    notify(`Fichier « ${file.name} » ajouté au dépôt !`);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -29,6 +24,23 @@ export function DropzonePage() {
       deleteFile(id);
       notify(`Fichier « ${name} » supprimé`);
     }
+  };
+
+  const getFileSrc = (file: any) => file.dataUrl || file.url || file.content || "";
+
+  const handleDownload = (file: any) => {
+    const src = getFileSrc(file);
+    if (!src) {
+      notify("Lien de téléchargement non disponible, réimporte le fichier", "error");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = src;
+    link.download = file.name || "fichier";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    notify(`Téléchargement de « ${file.name} » lancé`);
   };
 
   return (
@@ -56,7 +68,7 @@ export function DropzonePage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {depotFiles.map((file: any) => {
-              const fileUrl = file.dataUrl || file.url || "";
+              const previewObj = { ...file, dataUrl: getFileSrc(file) };
               return (
                 <div
                   key={file.id}
@@ -71,26 +83,19 @@ export function DropzonePage() {
 
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => setPreviewFile(file)}
+                      onClick={() => setPreviewFile(previewObj)}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[var(--accent)] dark:hover:bg-slate-700"
                       title="Aperçu"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
-                    <a
-                      href={fileUrl}
-                      download={file.name}
-                      onClick={(e) => {
-                        if (!fileUrl) {
-                          e.preventDefault();
-                          notify("Fichier non disponible, réimporte-le", "error");
-                        }
-                      }}
+                    <button
+                      onClick={() => handleDownload(file)}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-500 dark:hover:bg-slate-700"
                       title="Télécharger"
                     >
                       <Download className="h-4 w-4" />
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleDelete(file.id, file.name)}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-slate-700"
