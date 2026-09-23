@@ -10,13 +10,13 @@ import { FileDrop } from "@/components/files/FileDrop";
 import { FilePreviewModal } from "@/components/files/FilePreviewModal";
 
 export function TasksPage() {
-  const { data, addFile } = useData() as any;
+  const context = useData() as any;
+  const data = context?.data || {};
+  const addFile = context?.addFile;
   const { notify } = useUI();
   const [tasks, setTasks] = useState<SchoolTask[]>([]);
   const [filter, setFilter] = useState<"all" | "devoir" | "eval">("all");
   const [openModal, setOpenModal] = useState(false);
-
-  // 1. État pour la prévisualisation
   const [previewFile, setPreviewFile] = useState<any | null>(null);
 
   // Form state
@@ -25,8 +25,6 @@ export function TasksPage() {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-
-  const setpendingFileOrSet = (f: File) => setPendingFile(f);
 
   const handleCreate = async () => {
     if (!title.trim() || !subjectId || !dueDate) {
@@ -37,7 +35,7 @@ export function TasksPage() {
     let fileId: string | undefined;
     if (pendingFile && addFile) {
       const rec = await addFile(pendingFile, { subjectId, category: kind });
-      fileId = rec.id;
+      fileId = rec?.id;
     }
 
     const newTask: SchoolTask = {
@@ -82,7 +80,6 @@ export function TasksPage() {
         </button>
       </div>
 
-      {/* Filtres */}
       <div className="flex gap-2">
         {(["all", "devoir", "eval"] as const).map((f) => (
           <button
@@ -107,7 +104,9 @@ export function TasksPage() {
       ) : (
         <div className="space-y-2">
           {filteredTasks.map((task) => {
-            const subject = data.subjects?.find((s: any) => s.id === task.subjectId);
+            const subject = Array.isArray(data.subjects)
+              ? data.subjects.find((s: any) => s.id === task.subjectId)
+              : null;
             return (
               <div
                 key={task.id}
@@ -143,12 +142,13 @@ export function TasksPage() {
                     <span className="flex items-center gap-1 text-xs font-medium text-slate-500">
                       <Calendar className="h-3.5 w-3.5" /> {new Date(task.dueDate).toLocaleDateString("fr-FR")}
                     </span>
-                    {/* 2. Rendu cliquable du fichier joint */}
                     {task.fileId && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          const foundFile = data.files?.find((f: any) => f.id === task.fileId);
+                          const foundFile = Array.isArray(data.files)
+                            ? data.files.find((f: any) => f.id === task.fileId)
+                            : null;
                           if (foundFile) setPreviewFile(foundFile);
                         }}
                         className="text-[10px] text-[var(--accent)] hover:underline flex items-center justify-end gap-1 mt-0.5 ml-auto"
@@ -192,9 +192,10 @@ export function TasksPage() {
           <Field label="Matière">
             <select className={inputClass} value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
               <option value="" disabled>Choisir une matière…</option>
-              {data.subjects?.map((s: any) => (
-                <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
-              ))}
+              {Array.isArray(data.subjects) &&
+                data.subjects.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
+                ))}
             </select>
           </Field>
 
@@ -208,7 +209,7 @@ export function TasksPage() {
 
           <Field label="Fichier associé (optionnel)">
             {!pendingFile ? (
-              <FileDrop onFile={setpendingFileOrSet} hint="PDF, sujet, cours..." />
+              <FileDrop onFile={(f) => setPendingFile(f)} hint="PDF, sujet, cours..." />
             ) : (
               <div className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded-lg dark:bg-slate-800">
                 <span>{pendingFile.name}</span>
@@ -224,7 +225,6 @@ export function TasksPage() {
         </div>
       </Modal>
 
-      {/* 3. Modale d'aperçu en bas du JSX de la page */}
       <FilePreviewModal
         open={!!previewFile}
         onClose={() => setPreviewFile(null)}
