@@ -15,8 +15,6 @@ export function DropzonePage() {
 
   const handleFileUpload = async (file: File) => {
     if (!addFile) return;
-    
-    // Conversion en DataURL pour assurer la persistance et le téléchargement/aperçu
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
@@ -31,21 +29,6 @@ export function DropzonePage() {
       deleteFile(id);
       notify(`Fichier « ${name} » supprimé`);
     }
-  };
-
-  const handleDownload = (file: any) => {
-    const src = file.dataUrl || file.url;
-    if (!src) {
-      notify("Données du fichier introuvables. Supprimez-le et réimportez-le.", "error");
-      return;
-    }
-    const link = document.createElement("a");
-    link.href = src;
-    link.download = file.name || "fichier";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    notify(`Téléchargement de « ${file.name} » lancé`);
   };
 
   return (
@@ -72,43 +55,53 @@ export function DropzonePage() {
           />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {depotFiles.map((file: any) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-              >
-                <div className="min-w-0 flex-1 pr-2">
-                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{file.name}</p>
-                  <p className="text-[10px] text-slate-400">
-                    {file.size ? `${(file.size / 1024).toFixed(1)} Ko` : "Fichier"}
-                  </p>
-                </div>
+            {depotFiles.map((file: any) => {
+              const fileUrl = file.dataUrl || file.url || "";
+              return (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{file.name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {file.size ? `${(file.size / 1024).toFixed(1)} Ko` : "Fichier"}
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPreviewFile(file)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[var(--accent)] dark:hover:bg-slate-700"
-                    title="Aperçu"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDownload(file)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-500 dark:hover:bg-slate-700"
-                    title="Télécharger"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(file.id, file.name)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-slate-700"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPreviewFile(file)}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[var(--accent)] dark:hover:bg-slate-700"
+                      title="Aperçu"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <a
+                      href={fileUrl}
+                      download={file.name}
+                      onClick={(e) => {
+                        if (!fileUrl) {
+                          e.preventDefault();
+                          notify("Fichier non disponible, réimporte-le", "error");
+                        }
+                      }}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-emerald-500 dark:hover:bg-slate-700"
+                      title="Télécharger"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                    <button
+                      onClick={() => handleDelete(file.id, file.name)}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-slate-700"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
